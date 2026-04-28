@@ -1,0 +1,679 @@
+:root {
+  --brand: #1a73e8;
+  --border: #ccc;
+}
+/* The HTML [hidden] attribute should always win over component rules
+   that set their own display value. Without this, a rule like
+   "#loading { display: flex; }" would silently override the UA's
+   "[hidden] { display: none }" and leave the element on screen even
+   after hide() flipped el.hidden = true. */
+[hidden] {
+  display: none !important;
+}
+body {
+  font:
+    13px system-ui,
+    sans-serif;
+  margin: 0;
+  padding: 12px;
+  width: 340px;
+  color: #222;
+}
+h1 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.muted {
+  color: #666;
+}
+#loading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.loading-spinner {
+  width: 1em;
+  height: 1em;
+  border: 0.15em solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: loading-spinner-rot 0.8s linear infinite;
+}
+@keyframes loading-spinner-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+    border-top-color: var(--border);
+  }
+}
+button {
+  width: 100%;
+  padding: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+button.primary {
+  background: var(--brand);
+  color: #fff;
+}
+button.primary:hover:not(:disabled) {
+  background: #1765cc;
+}
+button.primary:disabled {
+  background: #9cb9e0;
+  cursor: not-allowed;
+}
+button.secondary {
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid var(--border);
+}
+button.secondary:hover {
+  background: #eaeaea;
+}
+button.danger {
+  background: #d93025;
+  color: #fff;
+}
+
+fieldset {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0 0 10px;
+}
+legend {
+  padding: 0 4px;
+  color: #555;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+label {
+  display: block;
+  padding: 3px 0;
+  cursor: pointer;
+}
+select {
+  width: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+/* ------- shared media card (used for video header, image header, gallery rows) ------- */
+.media-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  position: relative;
+  margin: 0;
+  box-sizing: border-box;
+}
+.media-card.header-card {
+  margin-bottom: 10px;
+}
+.media-card.selectable {
+  cursor: pointer;
+}
+.media-card.selectable:hover {
+  background: #eef3fb;
+  border-color: #b9cde9;
+}
+/* padding-right on card-top keeps the absolutely-positioned
+         "X/Y" pill from overlapping the title/meta. The controls row
+         below gets the full card width. */
+.media-card .card-top {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-right: 44px;
+}
+.media-card .card-check {
+  align-self: center;
+  margin: 0;
+  flex-shrink: 0;
+}
+.media-card .card-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #e8e8e8;
+  flex-shrink: 0;
+}
+.media-card.header-card .card-thumb {
+  width: 72px;
+  height: 72px;
+}
+.card-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+}
+.card-thumb-wrap .card-thumb {
+  width: 100%;
+  height: 100%;
+}
+.card-thumb-wrap .card-play-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.card-thumb-wrap .card-play-badge::before {
+  content: "▶";
+  color: #fff;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.65);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding-left: 2px;
+}
+.media-card .card-info {
+  flex: 1;
+  min-width: 0;
+}
+.media-card .card-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #222;
+  word-break: break-word;
+}
+.media-card .card-filename {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #555;
+  margin-top: 3px;
+  word-break: break-all;
+}
+.media-card .card-handle {
+  font-size: 11px;
+  color: var(--brand);
+  margin-top: 3px;
+  font-weight: 500;
+}
+.media-card .card-meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 3px;
+}
+/* Captured post title — the body text of a post, shown as a dim
+   subtitle under the filename. Clamp to 2 lines; hover to see full. */
+.media-card .card-capturedtitle {
+  font-size: 11px;
+  color: #555;
+  margin-top: 3px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+/* Controls row sits below card-top and spans the full card width —
+         uses the space under the thumbnail so dropdowns aren't cramped. */
+.media-card .card-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.media-card .card-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #555;
+}
+.media-card .card-control > span {
+  flex: 0 0 60px;
+  font-weight: 500;
+}
+.media-card .card-control > select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+}
+/* card-control-toggle is the variant used for full-width checkbox
+   rows (currently the "Include Subtitles File" row in the video
+   picker). The default card-control rule pins the <span> to a 60px
+   gutter so the right-hand select can flex-fill — that crops the
+   label of a checkbox row. Here the checkbox sits on the left at
+   its intrinsic size and the label spans the rest of the card
+   width. */
+.media-card .card-control.card-control-toggle > input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.media-card .card-control.card-control-toggle > span {
+  flex: 1;
+  font-weight: 400;
+}
+.media-card .card-position {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 10px;
+  color: #666;
+  font-family: ui-monospace, monospace;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+/* Remove-from-list × button for capture galleries. Sits in the
+         top-right corner; card-position is shifted left to sit next
+         to it so the user sees both "3/8" and ×. Rendered only on
+         redditInfo.isCaptureList galleries. */
+.media-card .card-remove {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: #666;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+.media-card .card-remove:hover {
+  background: #fce4e4;
+  color: #c52222;
+}
+/* When X is present (capture list), push the idx/total badge
+         to the left so both fit. */
+.media-card.has-remove .card-position {
+  right: 30px;
+}
+/* Dismiss × for single-item pickers (video-picker / image-picker).
+         Always visible so the user can clear a wrong-result card
+         without having to close the popup. Sits in the top-right;
+         card-position gets shifted left to make room. */
+.media-card .card-dismiss {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  color: #666;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+.media-card .card-dismiss:hover {
+  background: #fce4e4;
+  color: #c52222;
+}
+/* Shift the "1/1" pill left when the dismiss × is present. */
+#picker .media-card .card-position,
+#image-picker .media-card .card-position {
+  right: 32px;
+}
+
+/* ------- gallery selection toolbar ------- */
+.album-control {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 12px;
+}
+.album-control .album-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.album-control .album-toggle + .album-toggle {
+  margin-top: 8px;
+}
+.album-control .album-body {
+  margin-top: 6px;
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.album-control .album-custom {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+.album-control .destination-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: #555;
+}
+.album-control .destination-row > span {
+  flex: 0 0 60px;
+  font-weight: 500;
+}
+.album-control .album-pick {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.album-control .album-pick:hover {
+  background: #f0f0f0;
+}
+.album-control .destination-path {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #555;
+  word-break: break-all;
+  padding: 2px 0;
+}
+.album-control .destination-path.empty {
+  color: #999;
+  font-style: italic;
+  font-family: inherit;
+}
+.media-card .card-custom-input {
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+.select-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.select-toolbar #gallery-remove-selected {
+  background: #fdeceb;
+  color: #b03030;
+  border-color: #e9b5b0;
+}
+.select-toolbar #gallery-remove-selected:hover {
+  background: #f9dbd9;
+}
+.select-toolbar #gallery-remove-selected:active {
+  background: #f3c7c3;
+}
+.select-toolbar button {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  color: #444;
+}
+.select-toolbar button:hover {
+  background: #f0f0f0;
+}
+.select-toolbar button:active {
+  background: #e4e4e4;
+}
+
+.item-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 2px;
+  margin: 0 -2px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ------- progress + terminal states ------- */
+.title {
+  font-weight: 600;
+  margin: 0 0 10px;
+  word-break: break-word;
+}
+.progress {
+  background: #eee;
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+.progress > .bar {
+  background: var(--brand);
+  height: 100%;
+  width: 0%;
+  transition: width 0.2s ease;
+}
+.stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 10px;
+}
+.status {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.status.ok {
+  color: #0a7a2f;
+}
+.status.err {
+  color: #b03030;
+}
+.status.info {
+  color: var(--brand);
+}
+.err-text {
+  font-size: 12px;
+}
+.err-text.info {
+  color: #555;
+}
+.path {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #444;
+  word-break: break-all;
+  margin-bottom: 10px;
+}
+.err-text {
+  color: #b03030;
+  white-space: pre-wrap;
+  margin-bottom: 10px;
+}
+.btn-row {
+  display: flex;
+  gap: 6px;
+}
+.btn-row button {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ------- save mode hint (only shown for video picker) ------- */
+#save-mode-hint {
+  font-size: 11px;
+  margin: 0 0 8px 2px;
+}
+#save-mode-hint .mode {
+  font-weight: 600;
+  color: #444;
+}
+#save-mode-hint .path {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #555;
+  display: block;
+  margin: 2px 0 0;
+  word-break: break-all;
+}
+
+/* ------- inline download status (shown below the primary button) ------- */
+.inline-status {
+  position: relative;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  border: 1px solid transparent;
+}
+.inline-status .close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.inline-status .close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.08);
+}
+.card-uploader {
+  font-size: 12px;
+  color: var(--brand);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.inline-status.running {
+  background: #fff7d6;
+  border-color: #e6d37a;
+  color: #5c4b1a;
+}
+.inline-status.done {
+  background: #e8f5ea;
+  border-color: #a5c9ab;
+  color: #0a3d14;
+}
+.inline-status.err {
+  background: #fde8e6;
+  border-color: #d6a5a1;
+  color: #5c1d15;
+}
+.inline-status.info {
+  background: #e6f0fb;
+  border-color: #9bbce3;
+  color: #153d6e;
+}
+.inline-status .status-head {
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding-right: 20px;
+}
+.inline-status .progress {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  height: 6px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+.inline-status .progress > .bar {
+  background: var(--brand);
+  height: 100%;
+  width: 0%;
+  transition: width 0.2s ease;
+}
+.inline-status .stats {
+  display: flex;
+  justify-content: space-between;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  opacity: 0.8;
+}
+.inline-status .path {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  word-break: break-all;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+.inline-status .detail {
+  margin-top: 4px;
+  white-space: pre-wrap;
+}
+.inline-status .actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.inline-status button {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 3px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  width: auto;
+  flex: 0 0 auto;
+}
+.inline-status button:hover {
+  background: #f0f0f0;
+}
+.inline-status button.danger {
+  background: #fdeceb;
+  color: #b03030;
+  border-color: #e9b5b0;
+}
+.inline-status button.danger:hover {
+  background: #f9dbd9;
+}

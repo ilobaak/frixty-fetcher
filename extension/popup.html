@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Frixty Fetcher</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <h1>Frixty Fetcher</h1>
+
+    <div id="loading" class="muted" role="status">
+      <span class="loading-spinner" aria-hidden="true"></span>Fetching media…
+    </div>
+
+    <!-- Explicit "fetch" affordance. Always visible so the user can
+         re-scan the current page even while a gallery is already on
+         screen. Works on any URL — unrecognized sites fall through to
+         yt-dlp, which handles hundreds of extractors beyond our
+         first-class ones. -->
+    <div id="fetch-prompt" hidden>
+      <p id="fetch-hint" class="muted" hidden></p>
+      <div class="btn-row">
+        <button id="fetch-btn" type="button" class="primary">Fetch media on this page</button>
+      </div>
+    </div>
+
+    <!-- Shared "Prompt each download" + destination + new-folder
+         controls. Sits just below the Fetch button so the section is
+         always visible in a fixed spot regardless of which picker (if
+         any) is on screen. Populated from the <template> below on
+         popup init. -->
+    <div class="download-controls-slot top-level"></div>
+
+    <!-- "Prompt each download" + destination + new-folder markup.
+         Cloned into the top-level .download-controls-slot on popup
+         init so the same UI drives every picker. -->
+    <template id="download-controls-tmpl">
+      <div class="album-control download-controls">
+        <label class="album-toggle">
+          <input type="checkbox" class="dl-prompt-each" />
+          Prompt each download
+        </label>
+        <div class="dl-auto-body" hidden>
+          <div class="destination-row">
+            <span>Destination</span>
+            <button type="button" class="album-pick dl-pick">Choose folder…</button>
+          </div>
+          <div class="destination-path empty dl-path">Using default save location</div>
+          <label class="album-toggle">
+            <input type="checkbox" class="dl-create-folder" />
+            Download to new folder
+          </label>
+          <div class="dl-folder-body" hidden>
+            <label class="card-control">
+              <span>Folder name</span>
+              <select class="dl-folder-mode">
+                <option value="uploader-title">[@Poster] - [Title]</option>
+                <option value="title">[Title]</option>
+                <option value="set">Set folder name</option>
+              </select>
+            </label>
+            <input
+              type="text"
+              class="album-custom dl-folder-custom"
+              placeholder="Folder name"
+              hidden
+            />
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ------------------ VIDEO PICKER ------------------ -->
+    <div id="picker" hidden>
+      <div class="media-card header-card">
+        <div class="card-top">
+          <img class="card-thumb" id="video-thumb" alt="" />
+          <div class="card-info">
+            <div class="card-uploader" id="video-uploader" hidden></div>
+            <div class="card-title" id="title">—</div>
+            <div class="card-meta" id="video-meta"></div>
+          </div>
+          <span class="card-position">1/1</span>
+          <button id="video-dismiss" class="card-dismiss" type="button" aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+        <div class="card-controls">
+          <label class="card-control" id="video-filename-group">
+            <span>Filename</span>
+            <select id="video-filename-mode">
+              <option value="uploader-title" selected>[@Poster] - [Title]</option>
+              <option value="title">[Title]</option>
+              <option value="set">User set</option>
+            </select>
+          </label>
+          <input
+            type="text"
+            id="video-filename-custom"
+            class="card-custom-input"
+            placeholder="Filename (no extension)"
+            hidden
+          />
+          <label class="card-control">
+            <span>Kind</span>
+            <select id="kind">
+              <option value="combined">Video + Audio</option>
+              <option value="video">Video only</option>
+              <option value="audio">Audio only</option>
+            </select>
+          </label>
+          <label class="card-control" id="quality-group">
+            <span>Quality</span>
+            <select id="quality"></select>
+          </label>
+          <label class="card-control card-control-toggle" id="subs-group">
+            <input type="checkbox" id="include-subs" />
+            <span>Include Subtitles File (if available)</span>
+          </label>
+        </div>
+      </div>
+      <p class="muted" id="save-mode-hint" hidden>—</p>
+      <button id="download" class="primary">Download</button>
+      <div class="inline-status" id="video-status" hidden></div>
+    </div>
+
+    <!-- ------------------ IMAGE PICKER ------------------ -->
+    <div id="image-picker" hidden>
+      <div class="media-card header-card">
+        <div class="card-top">
+          <img class="card-thumb" id="image-thumb" alt="" />
+          <div class="card-info">
+            <div class="card-uploader" id="image-uploader" hidden></div>
+            <div class="card-title" id="image-title">—</div>
+            <div class="card-filename" id="image-filename"></div>
+            <div class="card-meta" id="image-meta"></div>
+          </div>
+          <span class="card-position">1/1</span>
+          <button id="image-dismiss" class="card-dismiss" type="button" aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+        <div class="card-controls">
+          <label class="card-control">
+            <span>Filename</span>
+            <select id="image-filename-mode">
+              <option value="uploader-title" selected>[@Poster] - [Title]</option>
+              <option value="title">[Title]</option>
+              <option value="original">Original filename</option>
+              <option value="setEach">User set</option>
+            </select>
+          </label>
+          <input
+            type="text"
+            id="image-filename-custom"
+            class="card-custom-input"
+            placeholder="Filename (no extension)"
+            hidden
+          />
+        </div>
+      </div>
+      <button id="image-download" class="primary">Download</button>
+      <div class="inline-status" id="image-status" hidden></div>
+    </div>
+
+    <!-- ------------------ GALLERY PICKER ------------------ -->
+    <div id="gallery-picker" hidden>
+      <div class="select-toolbar">
+        <button id="select-all" type="button">Select all</button>
+        <button id="select-none" type="button">Select none</button>
+        <button id="gallery-remove-selected" type="button">Remove selected</button>
+      </div>
+      <div class="item-list" id="gallery-items"></div>
+      <button id="gallery-download" class="primary">
+        Download selected (<span id="gallery-download-count">0</span>)
+      </button>
+      <div class="inline-status" id="gallery-status" hidden></div>
+    </div>
+
+    <!-- ------------------ RUNNING STATE ------------------ -->
+    <div id="running" hidden>
+      <p class="title" id="running-title">—</p>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <div class="stats">
+        <span id="percent">0%</span>
+        <span id="speed">—</span>
+        <span id="eta">—</span>
+      </div>
+      <p class="muted" id="stage">download</p>
+      <button id="cancel" class="danger">Cancel</button>
+    </div>
+
+    <!-- ------------------ TERMINAL STATE ------------------ -->
+    <div id="terminal" hidden>
+      <p class="status" id="status-line">—</p>
+      <p class="path" id="result-path"></p>
+      <p class="err-text" id="result-err" hidden></p>
+      <div class="btn-row">
+        <button id="open-folder" class="secondary" hidden>Open folder</button>
+        <button id="reset" class="primary">Download another</button>
+      </div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

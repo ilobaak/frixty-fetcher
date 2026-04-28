@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source: SVG Repo (svgrepo.com). Modifications:
+     - fill="currentColor" so the icon inherits the host button's
+       CSS color (hover / captured tints flow through).
+     - Dropped the original placeholder transparent rect + <style>.
+     - Added stroke="currentColor" stroke-width="2" so the lines
+       render visually thicker (the source paths were very thin
+       when rendered at small icon sizes). stroke-linejoin="round"
+       keeps the arrowhead + bar corners from looking serrated. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="currentColor"
+     stroke="currentColor" stroke-width="2" stroke-linejoin="round"
+     aria-hidden="true">
+  <path d="M16,7,6,17l1.41,1.41L15,10.83V28H2v2H15a2,2,0,0,0,2-2V10.83l7.59,7.58L26,17Z"/>
+  <path d="M6,8V4H26V8h2V4a2,2,0,0,0-2-2H6A2,2,0,0,0,4,4V8Z"/>
+</svg>

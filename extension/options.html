@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Frixty Fetcher — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <h1>Frixty Fetcher — Settings</h1>
+
+    <h2>Frixty Fetcher</h2>
+    <div class="specific-body" aria-disabled="false" style="margin-left: 0">
+      <span id="host-version" class="path empty">Loading…</span>
+      <button id="check-host-updates">Check for updates</button>
+    </div>
+    <p id="host-update-result" class="muted" style="margin-top: 8px" hidden></p>
+
+    <h2>yt-dlp</h2>
+    <div class="specific-body" aria-disabled="false" style="margin-left: 0">
+      <span id="ytdlp-version" class="path empty">Loading…</span>
+      <button id="check-updates">Check for updates</button>
+    </div>
+    <p id="update-result" class="muted" style="margin-top: 8px" hidden></p>
+
+    <h2>When I click Download</h2>
+
+    <label class="radio-row">
+      <input type="radio" name="saveMode" value="ask" />
+      Ask where to save (opens the OS Save As dialog)
+    </label>
+
+    <label class="radio-row">
+      <input type="radio" name="saveMode" value="lastLocation" />
+      Save to last used location
+    </label>
+    <div id="last-body" class="specific-body" aria-disabled="true">
+      <span id="last-path" class="path empty">No downloads yet — falls back to Save As</span>
+    </div>
+
+    <label class="radio-row">
+      <input type="radio" name="saveMode" value="specific" />
+      Save to:
+    </label>
+    <div id="specific-body" class="specific-body" aria-disabled="true">
+      <span id="specific-path" class="path empty">No folder selected</span>
+      <button id="choose">Choose folder…</button>
+    </div>
+
+    <label class="radio-row">
+      <input type="radio" name="saveMode" value="default" />
+      Save to your default download folder
+    </label>
+
+    <div class="row">
+      <button id="save" class="primary">Save</button>
+      <span id="status" class="status">Saved</span>
+    </div>
+    <div id="err" class="err" hidden></div>
+
+    <h2>Twitter / X cookies</h2>
+    <label class="radio-row">
+      <input type="radio" name="twitter-cookies-mode" value="auto" />
+      Auto — try without cookies first, fall back to Chrome's cookies if the fetch fails
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="twitter-cookies-mode" value="always" />
+      Always use Chrome's cookies (recommended if you see lots of age-restricted content)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="twitter-cookies-mode" value="never" />
+      Never use cookies
+    </label>
+
+    <h2>YouTube cookies</h2>
+    <label class="radio-row">
+      <input type="radio" name="youtube-cookies-mode" value="auto" />
+      Auto — try without cookies first, fall back to Chrome's cookies if the fetch fails
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="youtube-cookies-mode" value="always" />
+      Always use Chrome's cookies (recommended for age-restricted videos)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="youtube-cookies-mode" value="never" />
+      Never use cookies
+    </label>
+
+    <h2>Instagram cookies</h2>
+    <label class="radio-row">
+      <input type="radio" name="instagram-cookies-mode" value="auto" />
+      Auto — try without cookies first, fall back to Chrome's cookies if the fetch fails
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="instagram-cookies-mode" value="always" />
+      Always use Chrome's cookies (recommended — posts, reels, and stories usually require login)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="instagram-cookies-mode" value="never" />
+      Never use cookies
+    </label>
+
+    <h2>Facebook cookies</h2>
+    <label class="radio-row">
+      <input type="radio" name="facebook-cookies-mode" value="auto" />
+      Auto — try without cookies first, fall back to Chrome's cookies if the fetch fails
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="facebook-cookies-mode" value="always" />
+      Always use Chrome's cookies (recommended — most video posts and reels require login)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="facebook-cookies-mode" value="never" />
+      Never use cookies
+    </label>
+
+    <h2>TikTok cookies</h2>
+    <label class="radio-row">
+      <input type="radio" name="tiktok-cookies-mode" value="auto" />
+      Auto — try without cookies first, fall back to Chrome's cookies if the fetch fails
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="tiktok-cookies-mode" value="always" />
+      Always use Chrome's cookies (recommended for region-locked or age-gated videos)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="tiktok-cookies-mode" value="never" />
+      Never use cookies
+    </label>
+    <p class="muted" style="margin-top: 4px">
+      Cookies are read from your current Chrome profile via the <code>chrome.cookies</code> API.
+      Nothing leaves your machine.
+    </p>
+
+    <h2>Download filenames</h2>
+    <label class="radio-row">
+      <input type="radio" name="filename-mode" value="uploader-title" />
+      [@Poster] - [Title] (<code>@user - Title 01.ext</code>, <code>@user - Title 02.ext</code>, …
+      for galleries)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="filename-mode" value="title" />
+      [Title] (<code>Title 01.ext</code>, <code>Title 02.ext</code>, … for galleries)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="filename-mode" value="sequential" />
+      Index — galleries only (<code>01.jpg</code>, <code>02.jpg</code>, …); falls back to [@Poster]
+      - [Title] for single-image downloads
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="filename-mode" value="original" />
+      Original filename (the URL's basename — usually a hash like <code>abc123.jpg</code>)
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="filename-mode" value="setEach" />
+      User set (always open the Save As dialog)
+    </label>
+    <p class="muted" style="margin-top: 4px">
+      Default for new downloads; the popup's per-item dropdowns pre-fill from here and remember your
+      most recent choice. The <code>[Index]</code> suffix is appended automatically when a gallery
+      has more than one item.
+    </p>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

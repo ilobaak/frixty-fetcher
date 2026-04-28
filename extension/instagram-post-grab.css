@@ -1,0 +1,53 @@
+/* Matches Instagram's own action-bar icon button vibe: 24px icons
+   inside a tap target with generous padding. Button inherits color
+   so light and dark themes both look right. */
+
+.ytdlp-ig-grab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 8px;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1;
+  border-radius: 9999px;
+  transition:
+    opacity 150ms,
+    color 150ms;
+}
+.ytdlp-ig-grab:hover {
+  opacity: 0.6;
+}
+.ytdlp-ig-grab svg {
+  display: block;
+  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
+     reasoning. The new icon's visual mass sits in the lower-right
+     of its canvas. */
+  transform: translate(1px, 1px);
+}
+/* Captured / error flash: solid background fill with white icon,
+   matching TikTok's grab-button feedback pattern. */
+.ytdlp-ig-grab.is-captured {
+  background: rgb(0, 186, 124) !important;
+  color: #ffffff !important;
+}
+.ytdlp-ig-grab.is-error {
+  background: rgb(214, 52, 52) !important;
+  color: #ffffff !important;
+}
+
+/* Story-viewer variant: Instagram's stories background is whatever
+   the user posted (often bright / gradient video), which swallows a
+   plain-color icon. Add a white opaque circle behind it with a dark
+   icon inside so it reads against any background. */
+.ytdlp-ig-grab.overlay {
+  background: rgba(255, 255, 255, 0.92);
+  color: rgb(38, 38, 38);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.ytdlp-ig-grab.overlay:hover {
+  background: rgb(255, 255, 255);
+  opacity: 1;
+}

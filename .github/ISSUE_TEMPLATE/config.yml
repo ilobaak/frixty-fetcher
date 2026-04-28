@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / "how do I…"
+    url: https://github.com/ilobaak/frixty-fetcher/discussions
+    about: For questions and usage help, please use Discussions instead of Issues so the bug tracker stays focused on actionable bugs.
+  - name: yt-dlp upstream issue
+    url: https://github.com/yt-dlp/yt-dlp/issues
+    about: If a specific site has stopped working entirely, the fix likely lives in yt-dlp itself — file there (with reproduction steps) and link the issue here.

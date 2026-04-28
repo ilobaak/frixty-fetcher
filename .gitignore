@@ -1,0 +1,41 @@
+# Go
+host/bin/
+*.exe
+*.test
+*.out
+
+# Node / extension tooling
+node_modules/
+dist/
+*.log
+.eslintcache
+coverage/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Bundled binaries (fetched by build scripts, not checked in)
+host/vendor-bin/
+installers/*/payload/
+# payload dirs keep a README.md for go:embed, but the real binaries are fetched
+host/cmd/installer/payload/*/yt-dlp*
+host/cmd/installer/payload/*/ffmpeg*
+host/cmd/installer/payload/*/frixtyhost*
+# Pre-rename leftovers; not produced by current builds but ignored
+# defensively so a stale local copy can't get re-tracked.
+host/cmd/installer/payload/*/ythost*
+
+# Extension signing key — only needed for .crx packaging, never commit
+extension-private-key.pem
+*-private-key.pem
+
+# Local scratch / manual test outputs
+test saves/
+logs/
+
+# Internal roadmap doc — kept locally for reference but not shipped in
+# the source archive or referenced from the public release notes.
+docs/CODE_SIGNING.md

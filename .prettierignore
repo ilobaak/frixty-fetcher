@@ -1,0 +1,15 @@
+# Don't reformat code we don't own.
+node_modules
+bin
+logs
+host
+# Touching popup.js right now would produce an enormous diff that
+# drowns every future patch. Format it once explicitly (npm run
+# format) once the team's ready; until then, lint-only.
+extension/popup.js
+extension/facebook.js
+extension/facebook-interceptor.js
+extension/facebook-post-grab.js
+extension/twitter-post-grab.js
+extension/instagram-post-grab.js
+extension/options.js

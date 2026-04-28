@@ -1,0 +1,140 @@
+/* TikTok grab button.
+   Two placements, both rendered as an opaque white circle so the icon
+   reads against any video/image background TikTok throws at us. Forced
+   pointer-events + high z-index ensure overlays don't intercept clicks. */
+
+.ytdlp-tt-grab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 9999px;
+  border: 0;
+  background: #ffffff;
+  color: rgb(22, 24, 35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 50;
+  isolation: isolate;
+  transition:
+    background-color 150ms,
+    color 150ms,
+    transform 120ms ease-out;
+}
+
+.ytdlp-tt-grab:hover {
+  background: rgb(245, 245, 245);
+  transform: scale(1.04);
+}
+
+.ytdlp-tt-grab:active {
+  transform: scale(0.96);
+}
+
+.ytdlp-tt-grab svg {
+  display: block;
+  pointer-events: none;
+  /* Slight bottom-right nudge: the icon's visual mass (the magnifier
+     with the +) sits in the lower-right of its 32-unit canvas, so a
+     true geometric center looks empty in the upper-left. Translating
+     1px right + 1px down makes the magnifier cap appear closer to the
+     button's optical center. */
+  transform: translate(1px, 1px);
+}
+
+.ytdlp-tt-grab.is-pressing {
+  background: rgb(29, 155, 240) !important;
+  color: #ffffff !important;
+  transform: scale(0.9);
+}
+
+/* Download-in-progress state. Uses --ytdlp-pct (set by the content
+   script on progress updates) to paint a conic-gradient "pie" fill
+   that shows the download percentage, leaving the icon visible on
+   top of the fill. */
+.ytdlp-tt-grab.is-downloading {
+  background: conic-gradient(
+    rgb(0, 186, 124) var(--ytdlp-pct, 0%),
+    rgba(0, 0, 0, 0.15) var(--ytdlp-pct, 0%)
+  ) !important;
+  color: rgb(22, 24, 35) !important;
+  cursor: progress;
+}
+.ytdlp-tt-grab.is-downloading svg {
+  background: #ffffff;
+  border-radius: 50%;
+  width: 60%;
+  height: 60%;
+}
+
+.ytdlp-tt-grab.is-captured {
+  background: rgb(0, 186, 124) !important;
+  color: #ffffff !important;
+}
+
+.ytdlp-tt-grab.is-error {
+  background: rgb(214, 52, 52) !important;
+  color: #ffffff !important;
+}
+
+/* Held while a TikTok grab-button capture is waiting for the user to
+   click the extension icon (because chrome.action.openPopup() failed
+   to propagate the user gesture from the SW). Same green as captured
+   plus a subtle pulse so the user notices the action is incomplete. */
+.ytdlp-tt-grab.is-pending-popup {
+  background: rgb(0, 186, 124) !important;
+  color: #ffffff !important;
+  animation: ytdlp-tt-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ytdlp-tt-pulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(0, 186, 124, 0.9);
+  }
+}
+
+/* Feed variant: circular tap target sized to match TikTok's ~48px
+   action-bar icons, sitting above the avatar. */
+.ytdlp-tt-grab-feed {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+
+/* Detail-page variant: smaller circle aligned with the ... action row. */
+.ytdlp-tt-grab-detail {
+  width: 36px;
+  height: 36px;
+  margin-right: 6px;
+}
+
+/* Nav-anchored variant: button is inserted as a sibling of TikTok's
+   own up / down post-navigation arrows so it inherits whatever
+   fixed/absolute layout TikTok applies to that column. The arrow
+   container itself does the positioning; we just match the size and
+   provide vertical spacing between buttons. */
+.ytdlp-tt-grab-nav-anchor {
+  width: 48px !important;
+  height: 48px !important;
+  margin: 8px 0 !important;
+}
+
+/* Floating fallback: used only when findNavArrow can't locate
+   TikTok's up/down arrows. Anchored to bottom-left of the viewport
+   to stay clear of TikTok's right-edge UI (comments column, action
+   sidebar, comment input). */
+.ytdlp-tt-grab-detail-fallback {
+  position: fixed !important;
+  bottom: 24px;
+  left: 24px;
+  width: 48px;
+  height: 48px;
+  z-index: 2147483000;
+}

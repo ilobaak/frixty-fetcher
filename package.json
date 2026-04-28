@@ -1,0 +1,28 @@
+{
+  "name": "frixty-fetcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frixty Fetcher: Chrome extension + Go native host that drives yt-dlp from the active tab. This package.json exists only to host the JS tooling (lint / format / typecheck / test); the extension itself ships as raw ES modules (no bundler).",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint extension",
+    "lint:fix": "eslint extension --fix",
+    "format": "prettier --write extension",
+    "format:check": "prettier --check extension",
+    "typecheck": "tsc -p jsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:icons": "node tools/build-icons.js",
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm run test"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
+    "happy-dom": "^20.9.0",
+    "prettier": "^3.4.2",
+    "sharp": "^0.34.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

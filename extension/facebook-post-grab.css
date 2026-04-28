@@ -1,0 +1,60 @@
+/* Floating grab button for Facebook pages. Loaded by the manifest's
+   content_scripts[].css entry alongside facebook-post-grab.js so the
+   button styles are in place before the script starts positioning. */
+
+.ytdlp-fb-grab-btn {
+  position: fixed;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(30, 144, 255, 0.95);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2147483000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  user-select: none;
+  font-family: -apple-system, system-ui, sans-serif;
+  pointer-events: auto;
+  display: none;
+  /* showForContainer swaps display to "flex" when rendering
+     so the inline SVG and the checkmark glyph both center
+     without line-height hacks. */
+  align-items: center;
+  justify-content: center;
+}
+.ytdlp-fb-grab-btn svg {
+  display: block;
+  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
+     reasoning. The new icon's visual mass sits in the lower-right
+     of its canvas. */
+  transform: translate(1px, 1px);
+}
+.ytdlp-fb-grab-btn:hover {
+  background: rgba(30, 144, 255, 1);
+}
+/* Captured / error flash: solid background fill with white icon,
+   matching the TikTok / Twitter / Instagram grab-button feedback
+   pattern. Icon stays visible — no textContent swap to ✓ / !. */
+.ytdlp-fb-grab-btn.is-captured {
+  background: rgb(0, 186, 124);
+}
+.ytdlp-fb-grab-btn.is-error {
+  background: rgb(214, 52, 52);
+}
+
+/* Marketplace item viewer: larger icon-only button so it's clearly
+   visible against the hero photo. Always visible (pinned, not
+   hover-triggered), so emphasis matters more than the subtle
+   30px icon used for feed post cards. */
+.ytdlp-fb-grab-btn--marketplace {
+  width: 44px;
+  height: 44px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+}
+.ytdlp-fb-grab-btn--marketplace svg {
+  width: 20px;
+  height: 20px;
+}

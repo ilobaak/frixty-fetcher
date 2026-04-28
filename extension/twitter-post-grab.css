@@ -1,0 +1,53 @@
+/* Twitter / X grab button. Sized to match Twitter's own action-bar
+   buttons — each share / like / reply etc. is ~34.75px tall with an
+   18.75px icon centered inside. The icon inherits color from the
+   parent via fill="currentColor" on the SVG. */
+
+.ytdlp-tw-grab-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ytdlp-tw-grab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34.75px;
+  height: 34.75px;
+  border: 0;
+  background: transparent;
+  color: rgb(113, 118, 123);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 9999px;
+  padding: 0;
+  transition:
+    background-color 150ms,
+    color 150ms;
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+.ytdlp-tw-grab svg {
+  display: block;
+  width: 18.75px;
+  height: 18.75px;
+  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
+     reasoning. The new icon's visual mass sits in the lower-right
+     of its canvas. */
+  transform: translate(1px, 1px);
+}
+.ytdlp-tw-grab:hover {
+  background: rgba(29, 155, 240, 0.1);
+  color: rgb(29, 155, 240);
+}
+/* Captured / error flash: solid background fill with white icon,
+   matching TikTok's grab-button feedback pattern. */
+.ytdlp-tw-grab.is-captured {
+  background: rgb(0, 186, 124) !important;
+  color: #ffffff !important;
+}
+.ytdlp-tw-grab.is-error {
+  background: rgb(214, 52, 52) !important;
+  color: #ffffff !important;
+}

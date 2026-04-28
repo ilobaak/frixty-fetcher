@@ -1,0 +1,92 @@
+{
+  "manifest_version": 3,
+  "name": "Frixty Fetcher",
+  "version": "1.0.0",
+  "description": "Download videos and images from YouTube, Reddit, Twitter, Instagram, Facebook, and TikTok — and hundreds more sites via yt-dlp.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3c8ywKpJxnYwraCPSUPrEmxt5QavTZJixpY8sT33HlviSKrUc5BzQ6F4gYQ7r0LUjVt1UWIOvHZO4kyhBg1n3dBtJL5dCEwUBkfYIAUuQsaVeEtioVBNYRfHpV2s9aztzzLoRwlHpj4mkjAa8xFX/QKDDtNPBP79FtX+dpRyKJHrkWafPxsVLhtddrNvhpWTWmMhygnSlU+XZ4jRl5faYfPR6OoT0mXK8RPZaNYiI6c1FQyH6lViOn4oKkgYsrUi/RkZpX8VVDOmTWzvLq3WxB/+tkoiegsGH4aZefRqH8fpq1X2v0X0cVIMG1V71SZGHnejQ1OMcooPUg4B8o8dtwIDAQAB",
+  "permissions": ["nativeMessaging", "activeTab", "storage", "scripting", "cookies", "downloads"],
+  "host_permissions": [
+    "*://*.reddit.com/*",
+    "*://*.redd.it/*",
+    "*://twitter.com/*",
+    "*://*.twitter.com/*",
+    "*://x.com/*",
+    "*://*.x.com/*",
+    "*://cdn.syndication.twimg.com/*",
+    "*://pbs.twimg.com/*",
+    "*://*.youtube.com/*",
+    "*://accounts.google.com/*",
+    "*://*.instagram.com/*",
+    "*://*.facebook.com/*",
+    "*://*.fb.watch/*",
+    "*://*.fbcdn.net/*",
+    "*://*.tiktok.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Frixty Fetcher",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "24": "icons/icon-24.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.facebook.com/*", "*://*.fb.watch/*"],
+      "js": ["facebook-interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.facebook.com/*", "*://*.fb.watch/*"],
+      "js": ["grab-button-shared.js", "facebook-post-grab.js"],
+      "css": ["facebook-post-grab.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://twitter.com/*", "*://*.twitter.com/*", "*://x.com/*", "*://*.x.com/*"],
+      "js": ["grab-button-shared.js", "twitter-post-grab.js"],
+      "css": ["twitter-post-grab.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://www.instagram.com/*", "*://instagram.com/*"],
+      "js": ["grab-button-shared.js", "instagram-post-grab.js"],
+      "css": ["instagram-post-grab.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.tiktok.com/*"],
+      "js": ["tiktok-shared.js", "tiktok-interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.tiktok.com/*"],
+      "js": ["tiktok-shared.js", "tiktok-post-grab.js"],
+      "css": ["tiktok-post-grab.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["grab-button-shared.js", "youtube-post-grab.js"],
+      "css": ["youtube-post-grab.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

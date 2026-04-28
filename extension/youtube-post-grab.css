@@ -1,0 +1,66 @@
+/* YouTube fetch button — visually at home next to YouTube's own
+   action buttons. Pill on regular watch pages (sits flush with the
+   like / dislike / share row) and circle on shorts (matches the
+   vertical action-column buttons). */
+
+.ytdlp-yt-grab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 8px 0 0;
+  padding: 0 16px;
+  height: 36px;
+  border: none;
+  border-radius: 18px;
+  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  cursor: pointer;
+  font: inherit;
+  vertical-align: middle;
+}
+.ytdlp-yt-grab:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+html[dark] .ytdlp-yt-grab,
+:root[dark] .ytdlp-yt-grab {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.ytdlp-yt-grab svg {
+  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
+     reasoning. The new icon's visual mass sits in the lower-right
+     of its canvas. */
+  transform: translate(1px, 1px);
+}
+html[dark] .ytdlp-yt-grab:hover,
+:root[dark] .ytdlp-yt-grab:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Shorts: circular button, slightly larger, stacked in the vertical
+   action column. Solid white circle (matching TikTok's grab button)
+   so the icon reads against any video background — Shorts can be
+   any color and the prior translucent-black background blended into
+   dark scenes, looking grey. */
+.ytdlp-yt-grab-shorts {
+  width: 48px;
+  height: 48px;
+  margin: 0 0 8px 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: rgb(15, 15, 15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.ytdlp-yt-grab-shorts:hover {
+  background: rgb(245, 245, 245);
+}
+
+.ytdlp-yt-grab.is-captured {
+  background: rgba(40, 180, 70, 0.95);
+  color: #fff;
+}
+.ytdlp-yt-grab.is-error {
+  background: rgba(220, 60, 60, 0.95);
+  color: #fff;
+}

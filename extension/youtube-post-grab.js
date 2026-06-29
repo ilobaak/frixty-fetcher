@@ -65,11 +65,16 @@
       variant: btn.classList.contains("ytdlp-yt-grab-shorts") ? "shorts" : "watch",
     });
     try {
+      const video = document.querySelector("video");
+      const currentTime = Number.isFinite(video?.currentTime) ? video.currentTime : 0;
       const resp = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ type: "yt:trigger-fetch", url: location.href }, (r) => {
-          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-          else resolve(r);
-        });
+        chrome.runtime.sendMessage(
+          { type: "yt:trigger-fetch", url: location.href, currentTime },
+          (r) => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve(r);
+          },
+        );
       });
       if (resp?.ok) grab.flashCaptured(btn);
       else grab.flashError(btn);

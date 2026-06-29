@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatTimestamp, parseTimestamp, validateTimestamp } from "../extension/popup-helpers.js";
+import {
+  frameTimestampPrefill,
+  formatTimestamp,
+  parseTimestamp,
+  validateTimestamp,
+} from "../extension/popup-helpers.js";
 
 describe("timestamp helpers", () => {
   it("parses numeric seconds", () => {
@@ -23,5 +28,23 @@ describe("timestamp helpers", () => {
   it("formats seconds for filenames and inputs", () => {
     expect(formatTimestamp(90)).toBe("1:30");
     expect(formatTimestamp(3723.5)).toBe("1:02:03.500");
+  });
+
+  it("prefills frame timestamps from bounded video time", () => {
+    expect(frameTimestampPrefill(42.25, 120)).toEqual({
+      seconds: 42.25,
+      label: "0:42.250",
+      sliderValue: "42",
+    });
+    expect(frameTimestampPrefill(150, 120)).toEqual({
+      seconds: 120,
+      label: "2:00",
+      sliderValue: "120",
+    });
+    expect(frameTimestampPrefill(-1, 120)).toEqual({
+      seconds: 0,
+      label: "0:00",
+      sliderValue: "0",
+    });
   });
 });

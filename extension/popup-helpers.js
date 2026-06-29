@@ -41,3 +41,14 @@ export function formatTimestamp(seconds) {
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}${suffix}`;
   return `${m}:${String(s).padStart(2, "0")}${suffix}`;
 }
+
+export function frameTimestampPrefill(seconds, duration = 0) {
+  const raw = Number(seconds);
+  let bounded = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  if (duration > 0 && bounded > duration) bounded = duration;
+  return {
+    seconds: bounded,
+    label: formatTimestamp(bounded),
+    sliderValue: String(Math.floor(bounded)),
+  };
+}

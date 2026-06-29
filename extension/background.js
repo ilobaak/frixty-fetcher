@@ -483,9 +483,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
     }
     const url = typeof msg.url === "string" ? msg.url : "";
+    const currentTime =
+      Number.isFinite(msg.currentTime) && msg.currentTime > 0 ? msg.currentTime : 0;
     const key = `frixty:auto-fetch:${tabId}`;
     chrome.storage.session
-      .set({ [key]: { url, ts: Date.now() } })
+      .set({ [key]: { url, ts: Date.now(), currentTime } })
       .then(() => {
         try {
           chrome.action.openPopup?.().catch(() => {});
@@ -494,7 +496,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           chrome.action.setBadgeText({ text: "▶", tabId });
           chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });
         } catch {}
-        dlog("yt:trigger-fetch", { tabId, url: url.slice(0, 120) });
+        dlog("yt:trigger-fetch", { tabId, url: url.slice(0, 120), currentTime });
         sendResponse({ ok: true });
       })
       .catch((err) => {

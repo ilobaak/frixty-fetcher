@@ -43,7 +43,7 @@ import {
   isKnownHost,
 } from "./shared.js";
 import { friendlyError } from "./popup-errors.js";
-import { formatTimestamp, validateTimestamp } from "./popup-helpers.js";
+import { formatTimestamp, frameTimestampPrefill, validateTimestamp } from "./popup-helpers.js";
 import { logFetcher } from "./fetcher-log.js";
 
 // errorContext snapshots the popup-side state friendlyError /
@@ -171,6 +171,7 @@ let currentFormats = null;
 // the user gets the popup's usual video/gallery picker without a
 // manual click.
 let autoFetchPending = false;
+let autoFetchFrameSeconds = null;
 let currentTitle = "";
 let currentUploader = "";
 let currentUploaderId = "";
@@ -298,6 +299,7 @@ async function init() {
     if (stored && typeof stored === "object" && stored.ts && Date.now() - stored.ts < 10_000) {
       if (!stored.url || stored.url === tabUrl) {
         autoFetchPending = true;
+        autoFetchFrameSeconds = Number.isFinite(stored.currentTime) ? stored.currentTime : null;
         dlog("auto-fetch flag consumed", { key: autoFetchKey, ageMs: Date.now() - stored.ts });
       } else {
         dlog("auto-fetch flag dropped — URL changed", {
@@ -1357,11 +1359,13 @@ function wireYouTubeImageActions() {
   if (!isYoutube) return;
   const slider = el("yt-frame-slider");
   const input = el("yt-frame-time");
+  const prefill = frameTimestampPrefill(autoFetchFrameSeconds ?? 0, currentDuration);
+  autoFetchFrameSeconds = null;
   if (slider) {
     slider.max = String(Math.max(0, Math.floor(currentDuration)));
-    slider.value = "0";
+    slider.value = prefill.sliderValue;
   }
-  if (input) input.value = "0:00";
+  if (input) input.value = prefill.label;
   slider.oninput = () => {
     input.value = formatTimestamp(Number(slider.value) || 0);
   };

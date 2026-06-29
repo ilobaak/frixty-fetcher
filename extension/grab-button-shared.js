@@ -10,25 +10,26 @@
 (function () {
   if (window.__frixtyGrabButton) return;
 
-  // Same canonical tray f-arrow path data every shared grab button uses.
+  // Same canonical download-tray path data every shared grab button uses.
   // Per-site SVG sizing differs (FB uses 22px on tight chrome, TW uses
   // 26px in tweet action rows) so we expose a builder that takes the size.
-  const FRIXTY_TRAY_F_ARROW_PATHS =
-    '<path data-part="f-arrow" d="M20.2 5.2h-2.4a3.4 3.4 0 0 0-3.4 3.4v13.8M10.8 13.3h7.2M8.2 18.8l6.2 6.2 6.2-6.2"/>' +
+  const FRIXTY_DOWNLOAD_TRAY_PATHS =
+    '<path data-part="arrow" d="M16 5.5v17"/>' +
+    '<path data-part="arrow" d="M9.8 17.2 16 23.4l6.2-6.2"/>' +
     '<path data-part="tray" d="M5.2 21.4v4.1a3 3 0 0 0 3 3h15.6a3 3 0 0 0 3-3v-4.1"/>';
   // Default 30px gives a high icon-to-button fill ratio inside
   // per-site containers (e.g. ~0.83 in TikTok's 36px detail circle).
   function fetchIconSvg(size) {
     const s = size || 30;
     return (
-      '<svg id="frixty-tray-f-arrow" viewBox="0 0 32 32" width="' +
+      '<svg id="frixty-download-tray" viewBox="0 0 32 32" width="' +
       s +
       '" height="' +
       s +
       '" ' +
-      'fill="none" stroke="currentColor" stroke-width="3.2" ' +
+      'fill="none" stroke="currentColor" stroke-width="2.6" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      FRIXTY_TRAY_F_ARROW_PATHS +
+      FRIXTY_DOWNLOAD_TRAY_PATHS +
       "</svg>"
     );
   }

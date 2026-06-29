@@ -39,14 +39,15 @@
   const DIAG_IMG_SRC_LEN = 160;
   const URL_LOG_LEN = 120;
 
-  const FRIXTY_TRAY_F_ARROW_PATHS =
-    '<path data-part="f-arrow" d="M20.2 5.2h-2.4a3.4 3.4 0 0 0-3.4 3.4v13.8M10.8 13.3h7.2M8.2 18.8l6.2 6.2 6.2-6.2"/>' +
+  const FRIXTY_DOWNLOAD_TRAY_PATHS =
+    '<path data-part="arrow" d="M16 5.5v17"/>' +
+    '<path data-part="arrow" d="M9.8 17.2 16 23.4l6.2-6.2"/>' +
     '<path data-part="tray" d="M5.2 21.4v4.1a3 3 0 0 0 3 3h15.6a3 3 0 0 0 3-3v-4.1"/>';
   const FETCH_ICON_SVG =
-    '<svg id="frixty-tray-f-arrow" viewBox="0 0 32 32" width="30" height="30" ' +
-    'fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" ' +
+    '<svg id="frixty-download-tray" viewBox="0 0 32 32" width="30" height="30" ' +
+    'fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" ' +
     'stroke-linejoin="round" aria-hidden="true">' +
-    FRIXTY_TRAY_F_ARROW_PATHS +
+    FRIXTY_DOWNLOAD_TRAY_PATHS +
     "</svg>";
 
   // ---------------------------------------------------------------------------

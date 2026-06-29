@@ -39,16 +39,14 @@
   const DIAG_IMG_SRC_LEN = 160;
   const URL_LOG_LEN = 120;
 
+  const FRIXTY_TRAY_F_ARROW_PATHS =
+    '<path data-part="f-arrow" d="M20.2 5.2h-2.4a3.4 3.4 0 0 0-3.4 3.4v13.8M10.8 13.3h7.2M8.2 18.8l6.2 6.2 6.2-6.2"/>' +
+    '<path data-part="tray" d="M5.2 21.4v4.1a3 3 0 0 0 3 3h15.6a3 3 0 0 0 3-3v-4.1"/>';
   const FETCH_ICON_SVG =
-    '<svg viewBox="0 0 32 32" width="30" height="30" fill="currentColor" ' +
-    'aria-hidden="true">' +
-    '<polygon points="24 19 21 19 21 16 19 16 19 19 16 19 16 21 19 21 19 24 21 24 21 21 24 21 24 19"/>' +
-    '<path d="M31,29.5859l-4.6885-4.6884a8.028,8.028,0,1,0-1.414,1.414L29.5859,31ZM20,26a6,6,0,1,1,6-6A6.0066,6.0066,0,0,1,20,26Z"/>' +
-    '<path d="M4,8H2V4A2.0021,2.0021,0,0,1,4,2H8V4H4Z"/>' +
-    '<path d="M26,8H24V4H20V2h4a2.0021,2.0021,0,0,1,2,2Z"/>' +
-    '<rect x="12" y="2" width="4" height="2"/>' +
-    '<path d="M8,26H4a2.0021,2.0021,0,0,1-2-2V20H4v4H8Z"/>' +
-    '<rect x="2" y="12" width="2" height="4"/>' +
+    '<svg id="frixty-tray-f-arrow" viewBox="0 0 32 32" width="30" height="30" ' +
+    'fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    FRIXTY_TRAY_F_ARROW_PATHS +
     "</svg>";
 
   // ---------------------------------------------------------------------------

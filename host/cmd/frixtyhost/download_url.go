@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +30,7 @@ func (s *server) handleDownloadUrl(req request) {
 }
 
 func (s *server) runDownloadUrl(req request) {
+	log.Printf("[frixty/host] downloadUrl start job=%s url=%q kind=%s askPath=%t", req.JobID, req.URL, req.Kind, req.AskPath)
 	var destPath string
 	if req.AskPath {
 		picked, err := s.promptSavePath(req, "Save as…")
@@ -81,6 +83,7 @@ func (s *server) runDownloadUrl(req request) {
 			s.sendJobError(req.JobID, "download_canceled", "Download canceled.")
 			return
 		}
+		log.Printf("[frixty/host] downloadUrl error job=%s url=%q err=%v", req.JobID, req.URL, err)
 		s.sendJobError(req.JobID, "download_failed", err.Error())
 		return
 	}
@@ -97,6 +100,7 @@ func (s *server) runDownloadUrl(req request) {
 		"path":  finalPath,
 		"bytes": size,
 	})
+	log.Printf("[frixty/host] downloadUrl done job=%s path=%q bytes=%d", req.JobID, finalPath, size)
 }
 
 // defaultFetchAndConvert downloads url to destPath and, when kind is

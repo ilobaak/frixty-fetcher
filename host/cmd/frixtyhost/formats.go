@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/ilobaak/frixty-fetcher/host/internal/ytdlp"
 )
@@ -16,6 +17,7 @@ func (s *server) handleListFormats(req request) {
 		s.sendRequestError(req.ReqID, "ytdlp_missing", "yt-dlp binary not found")
 		return
 	}
+	log.Printf("[frixty/host] listFormats start url=%q cookies=%t", req.URL, req.CookiesText != "")
 	ctx, cancel := context.WithTimeout(context.Background(), listFormatsTimeout)
 	defer cancel()
 	cookiesFile, cookiesCleanup, err := writeCookiesTemp(req.CookiesText)
@@ -26,6 +28,7 @@ func (s *server) handleListFormats(req request) {
 	defer cookiesCleanup()
 	listing, err := ytdlp.ListFormats(ctx, bin, req.URL, cookiesFile)
 	if err != nil {
+		log.Printf("[frixty/host] listFormats error url=%q err=%v", req.URL, err)
 		code, msg := "listformats_failed", err.Error()
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			code = "listformats_timeout"
@@ -39,6 +42,7 @@ func (s *server) handleListFormats(req request) {
 		// but expose no downloadable format. Surface that as a distinct code
 		// rather than a generic failure.
 		s.sendRequestError(req.ReqID, "no_formats", "no downloadable formats for this URL")
+		log.Printf("[frixty/host] listFormats no_formats url=%q", req.URL)
 		return
 	}
 	resp := map[string]any{
@@ -52,4 +56,5 @@ func (s *server) handleListFormats(req request) {
 		"items":      listing.Formats,
 	}
 	s.send(withReqID(req, resp))
+	log.Printf("[frixty/host] listFormats done url=%q formats=%d", req.URL, len(listing.Formats))
 }

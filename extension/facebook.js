@@ -13,6 +13,7 @@
 // filter the returned data.
 
 import { basenameFromUrl, extensionFromUrl, sanitizeFilenameSegment } from "./shared.js";
+import { logFetcher } from "./fetcher-log.js";
 
 const dlog = (step, ...args) => console.log("[frixty/fb]", step, ...args);
 
@@ -164,6 +165,13 @@ export async function visibleFacebookStoryPosterToken() {
 // but-no-captures.
 export async function getFacebookStoryFromInterceptor() {
   const status = await readFacebookInterceptorCache();
+  logFetcher("facebook", "interceptor:status", {
+    loaded: !!status.loaded,
+    fetchCount: status.fetchCount,
+    xhrCount: status.xhrCount,
+    captureCount: status.captureCount,
+    cacheCount: status.cache.length,
+  });
   dlog(
     "facebook interceptor status",
     "loaded=" + (status.loaded ? "y" : "n"),
@@ -493,6 +501,7 @@ export async function getFacebookDomInfo() {
     scraped = results?.[0]?.result;
   } catch (err) {
     dlog("facebook scrape failed", err?.message);
+    logFetcher("facebook", "dom:exception", { error: err?.message || String(err) });
     return null;
   }
   if (!scraped) return null;
@@ -522,6 +531,13 @@ export async function getFacebookDomInfo() {
     "bgSamples=" + JSON.stringify(scraped.bgSamples || []),
     "kept=" + JSON.stringify((scraped.images ?? []).slice(0, 3).map((i) => i.src)),
   );
+  logFetcher("facebook", "dom:scraped", {
+    scope: scraped.scope || "",
+    rawImageCount: scraped.rawImgCount || 0,
+    imageCount: scraped.images?.length || 0,
+    videoCount: scraped.videos?.length || 0,
+    hasVideoElement: !!scraped.hasVideoElement,
+  });
 
   const items = [];
   const seen = new Set();
@@ -597,12 +613,14 @@ export async function getFacebookDomInfo() {
 
   if (items.length === 1 && items[0].mime?.startsWith("image/")) {
     const i = items[0];
+    logFetcher("facebook", "dom:image", { imageUrl: i.url });
     return {
       kind: "image", title, handle, date,
       imageUrl: i.url, thumbUrl: i.thumbUrl, width: i.width, height: i.height,
       mime: i.mime, basename: i.basename,
     };
   }
+  logFetcher("facebook", "dom:gallery", { itemCount: items.length });
   return { kind: "gallery", title, handle, date, items };
 }
 

@@ -17,6 +17,20 @@ coverage/
 *.swp
 .DS_Store
 
+# Local tooling — do not commit
+.Codex/
+.Codex-no-auto
+AGENTS.md
+.claude/
+.anthropic/
+.cursor/
+.cursorrules
+.aider*
+.continue/
+.copilot/
+.windsurf/
+.codeium/
+
 # Bundled binaries (fetched by build scripts, not checked in)
 host/vendor-bin/
 installers/*/payload/

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,6 +36,7 @@ func (s *server) handleDownloadGallery(req request) {
 }
 
 func (s *server) runDownloadGallery(req request) {
+	log.Printf("[frixty/host] downloadGallery start job=%s items=%d askDir=%t askPerItem=%t", req.JobID, len(req.Items), req.AskDir, req.AskPerItem)
 	// AskPerItem runs a Save As dialog per item and places each file
 	// wherever the user chooses. No album subfolder is created — the user
 	// has explicit control over every path.
@@ -158,6 +160,7 @@ func (s *server) runDownloadGallery(req request) {
 				s.sendJobError(req.JobID, "download_canceled", "Gallery download canceled.")
 				return
 			}
+			log.Printf("[frixty/host] downloadGallery item error job=%s index=%d url=%q err=%v", req.JobID, i+1, item.URL, err)
 			failures = append(failures, itemFailure{Index: i + 1, URL: item.URL, Error: err.Error()})
 			s.send(map[string]any{
 				"type":    "progress",
@@ -216,4 +219,5 @@ func (s *server) runDownloadGallery(req request) {
 		doneMsg["failures"] = failures
 	}
 	s.send(doneMsg)
+	log.Printf("[frixty/host] downloadGallery done job=%s saved=%d total=%d path=%q", req.JobID, savedCount, total, finalPath)
 }

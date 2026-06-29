@@ -18,6 +18,7 @@
 //   { kind: "gallery", items }   — multi-photo tweet
 
 import { computeSyndicationToken } from "./shared.js";
+import { logFetcher } from "./fetcher-log.js";
 
 const TWEET_URL_RE = /^https?:\/\/(?:[^.]+\.)?(?:twitter\.com|x\.com)\/[^/]+\/status\/(\d+)/i;
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -47,16 +48,22 @@ export async function detectTweet(url) {
   const match = url.match(TWEET_URL_RE);
   if (!match) return null;
   const tweetId = match[1];
+  logFetcher("twitter", "detect:start", { url, tweetId });
 
   const token = computeSyndicationToken(tweetId);
   const api = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&token=${token}&lang=en`;
+  logFetcher("twitter", "syndication:fetch", { url: api, tweetId });
 
   let data;
   try {
     const resp = await fetch(api, { credentials: "omit" });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      logFetcher("twitter", "syndication:error", { url: api, status: resp.status });
+      throw new Error(`HTTP ${resp.status}`);
+    }
     data = await resp.json();
-  } catch {
+  } catch (e) {
+    logFetcher("twitter", "syndication:exception", { url: api, error: e?.message || String(e) });
     // Syndication can refuse (deleted tweet, NSFW that needs login, etc.).
     // Let yt-dlp have a go — its Twitter extractor has authenticated fall-
     // backs for video tweets and will error cleanly on bad URLs.
@@ -64,6 +71,7 @@ export async function detectTweet(url) {
   }
 
   const media = Array.isArray(data?.mediaDetails) ? data.mediaDetails : [];
+  logFetcher("twitter", "syndication:result", { tweetId, itemCount: media.length });
   if (media.length === 0) {
     return { kind: "video" };
   }
@@ -103,12 +111,14 @@ export async function detectTweet(url) {
   // No usable media in either track — bail so the caller can fall through
   // to the DOM scrape / yt-dlp path.
   if (photos.length === 0 && videos.length === 0) {
+    logFetcher("twitter", "detect:no-media", { url, mediaCount: media.length });
     return { kind: "video" };
   }
 
   // Single-photo tweets keep the image picker for its nicer single-item UI.
   if (photos.length === 1 && videos.length === 0) {
     const p = photos[0];
+    logFetcher("twitter", "detect:image", { url, imageUrl: p.url });
     return {
       kind: "image",
       title,
@@ -126,6 +136,11 @@ export async function detectTweet(url) {
   // Everything else (multi-photo, single-or-multi-video, or mixed) routes
   // through the gallery picker. Its single-item code path handles 1-video
   // tweets cleanly (no album folder, quality dropdown when variants exist).
+  logFetcher("twitter", "detect:gallery", {
+    url,
+    photoCount: photos.length,
+    videoCount: videos.length,
+  });
   return { kind: "gallery", title, handle, date, items: [...photos, ...videos] };
 }
 
@@ -228,9 +243,14 @@ export async function getTwitterDomInfo() {
       func: scrapeTwitterMedia,
     });
     scraped = results?.[0]?.result;
-  } catch {
+  } catch (e) {
+    logFetcher("twitter", "dom:exception", { error: e?.message || String(e) });
     return null;
   }
+  logFetcher("twitter", "dom:scraped", {
+    imageCount: scraped?.images?.length || 0,
+    videoCount: scraped?.videos?.length || 0,
+  });
 
   const items = [];
   const seen = new Set();
@@ -298,7 +318,11 @@ export async function getTwitterDomInfo() {
     });
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    logFetcher("twitter", "dom:no-media");
+    return null;
+  }
+  logFetcher("twitter", "dom:result", { itemCount: items.length });
 
   const rawText = (scraped?.text ?? "").replace(/\s+/g, " ").trim();
   const title = rawText.length > 80 ? rawText.slice(0, 80) + "…" : rawText || "Tweet";

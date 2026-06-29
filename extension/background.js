@@ -13,6 +13,7 @@ import {
   formatNetscapeCookie,
   buildTtRelayMessage,
 } from "./background-helpers.js";
+import { logFetcher } from "./fetcher-log.js";
 
 const HOST_NAME = "com.frixty.fetcher";
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -741,13 +742,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       try {
         const token = computeSyndicationToken(tweetId);
         const api = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&token=${token}&lang=en`;
+        logFetcher("twitter", "syndication:fetch", { url: api, tweetId });
         const resp = await fetch(api, { credentials: "omit" });
         if (!resp.ok) {
+          logFetcher("twitter", "syndication:error", { url: api, status: resp.status });
           sendResponse({ ok: false, error: `http-${resp.status}` });
           return;
         }
         const data = await resp.json();
         const media = Array.isArray(data?.mediaDetails) ? data.mediaDetails : [];
+        logFetcher("twitter", "syndication:result", { tweetId, itemCount: media.length });
         dlog("tw:fetch-media", { tweetId, mediaCount: media.length });
         sendResponse({ ok: true, mediaDetails: media });
       } catch (err) {
@@ -775,11 +779,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: false, error: "bad-shortcode-encoding" });
           return;
         }
-        const resp = await fetch(`https://www.instagram.com/api/v1/media/${mediaId}/info/`, {
+        const apiUrl = `https://www.instagram.com/api/v1/media/${mediaId}/info/`;
+        logFetcher("instagram", "post-api:fetch", { url: apiUrl, shortcode });
+        const resp = await fetch(apiUrl, {
           headers: { "X-IG-App-ID": IG_APP_ID },
           credentials: "include",
         });
         if (!resp.ok) {
+          logFetcher("instagram", "post-api:error", { url: apiUrl, status: resp.status });
           sendResponse({ ok: false, error: `http-${resp.status}` });
           return;
         }
@@ -793,6 +800,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           shortcode,
           type: media.media_type,
           slides: media.carousel_media?.length || 1,
+        });
+        logFetcher("instagram", "post-api:result", {
+          shortcode,
+          mediaType: media.media_type,
+          itemCount: media.carousel_media?.length || 1,
         });
         sendResponse({ ok: true, media });
       } catch (err) {
@@ -810,11 +822,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     (async () => {
       try {
-        const profResp = await fetch(
-          `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
-          { headers: { "X-IG-App-ID": IG_APP_ID }, credentials: "include" },
-        );
+        const profileUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+        logFetcher("instagram", "story-profile-api:fetch", { url: profileUrl, username });
+        const profResp = await fetch(profileUrl, {
+          headers: { "X-IG-App-ID": IG_APP_ID },
+          credentials: "include",
+        });
         if (!profResp.ok) {
+          logFetcher("instagram", "story-profile-api:error", {
+            url: profileUrl,
+            status: profResp.status,
+          });
           sendResponse({ ok: false, error: `profile-http-${profResp.status}` });
           return;
         }
@@ -824,11 +842,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: false, error: "no-user-id" });
           return;
         }
-        const reelResp = await fetch(
-          `https://www.instagram.com/api/v1/feed/reels_media/?reel_ids=${userId}`,
-          { headers: { "X-IG-App-ID": IG_APP_ID }, credentials: "include" },
-        );
+        const reelUrl = `https://www.instagram.com/api/v1/feed/reels_media/?reel_ids=${userId}`;
+        logFetcher("instagram", "story-reels-api:fetch", { url: reelUrl, username });
+        const reelResp = await fetch(reelUrl, {
+          headers: { "X-IG-App-ID": IG_APP_ID },
+          credentials: "include",
+        });
         if (!reelResp.ok) {
+          logFetcher("instagram", "story-reels-api:error", {
+            url: reelUrl,
+            status: reelResp.status,
+          });
           sendResponse({ ok: false, error: `reels-http-${reelResp.status}` });
           return;
         }
@@ -840,6 +864,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const items = Array.isArray(reel.items) ? reel.items : [];
         dlog("ig:fetch-story-media", { username, userId, storyCount: items.length });
+        logFetcher("instagram", "story-api:result", { username, itemCount: items.length });
         sendResponse({ ok: true, username, items });
       } catch (err) {
         dlog("ig:fetch-story-media failed", err?.message || err);
@@ -944,6 +969,7 @@ async function handlePopupMessage(m, port) {
       // see the relay branch above for why this matters.
       pendingRequests.set(reqId, { port, cacheKey, useCookies: !!m.useCookies });
       const cookiesText = m.useCookies ? await readSiteCookiesText(m.url) : "";
+      logFetcher("sw", "host:listFormats", { url: m.url, useCookies: !!m.useCookies });
       ensureHostPort().postMessage({
         action: "listFormats",
         reqId,
@@ -962,6 +988,13 @@ async function handlePopupMessage(m, port) {
         error: null,
       });
       const cookiesText = m.useCookies ? await readSiteCookiesText(m.url) : "";
+      logFetcher("sw", "host:download", {
+        url: m.url,
+        kind: m.selection?.kind || "",
+        height: m.selection?.height || 0,
+        useCookies: !!m.useCookies,
+        askPath: !!m.askPath,
+      });
       ensureHostPort().postMessage({
         action: "download",
         jobId: m.jobId,
@@ -991,6 +1024,12 @@ async function handlePopupMessage(m, port) {
         path: null,
         error: null,
       });
+      logFetcher("sw", "host:downloadUrl", {
+        url: m.url,
+        pageUrl: m.pageUrl ?? "",
+        kind: m.kind ?? "combined",
+        askPath: !!m.askPath,
+      });
       ensureHostPort().postMessage({
         action: "downloadUrl",
         jobId: m.jobId,
@@ -1004,6 +1043,37 @@ async function handlePopupMessage(m, port) {
         albumName: m.albumName ?? "",
       });
       break;
+    case "extractFrame": {
+      jobs.set(m.jobId, {
+        url: m.pageUrl ?? m.url,
+        kind: "frame",
+        status: "running",
+        progress: null,
+        path: null,
+        error: null,
+      });
+      const cookiesText = m.useCookies ? await readSiteCookiesText(m.url) : "";
+      logFetcher("sw", "host:extractFrame", {
+        url: m.url,
+        timestamp: m.timestamp ?? 0,
+        useCookies: !!m.useCookies,
+        askPath: !!m.askPath,
+      });
+      ensureHostPort().postMessage({
+        action: "extractFrame",
+        jobId: m.jobId,
+        url: m.url,
+        timestamp: m.timestamp ?? 0,
+        destDir: m.destDir ?? "",
+        askPath: !!m.askPath,
+        defaultFileName: m.defaultFileName ?? "",
+        startDir: m.startDir ?? "",
+        dialogTitle: m.dialogTitle ?? "",
+        albumName: m.albumName ?? "",
+        cookiesText,
+      });
+      break;
+    }
     case "downloadGallery":
       jobs.set(m.jobId, {
         url: m.pageUrl ?? "gallery",
@@ -1012,6 +1082,12 @@ async function handlePopupMessage(m, port) {
         progress: null,
         path: null,
         error: null,
+      });
+      logFetcher("sw", "host:downloadGallery", {
+        pageUrl: m.pageUrl ?? "",
+        itemCount: Array.isArray(m.items) ? m.items.length : 0,
+        askDir: !!m.askDir,
+        askPerItem: !!m.askPerItem,
       });
       ensureHostPort().postMessage({
         action: "downloadGallery",

@@ -1,5 +1,7 @@
 // @ts-check
 
+import { logFetcher } from "./fetcher-log.js";
+
 // Reddit post detection. yt-dlp's reddit extractor only surfaces video
 // content; for static images and galleries we fetch Reddit's own JSON
 // representation of the post and drive the download ourselves.
@@ -24,22 +26,44 @@
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 const POST_URL_RE = /^https?:\/\/(?:[^.]+\.)?reddit\.com\/r\/[^/]+\/comments\/[^/]+/i;
+const SHORT_URL_RE = /^https?:\/\/redd\.it\/[a-z0-9]+/i;
+const DIRECT_IMAGE_RE =
+  /^https?:\/\/(?:i|preview)\.redd\.it\/[^?#]+\.(?:jpe?g|png|gif|webp)(?:[?#].*)?$/i;
+const DIRECT_VIDEO_RE = /^https?:\/\/v\.redd\.it\/[a-z0-9]+/i;
 
 // Reddit's standalone media viewer ("open image in new tab" from a post or
 // a gallery). Shape: https://www.reddit.com/media?url=<url-encoded media URL>.
 const MEDIA_VIEWER_RE = /^https?:\/\/(?:[^.]+\.)?reddit\.com\/media\b/i;
 
 export function looksLikeRedditPost(url) {
-  return typeof url === "string" && (POST_URL_RE.test(url) || MEDIA_VIEWER_RE.test(url));
+  return (
+    typeof url === "string" &&
+    (POST_URL_RE.test(url) ||
+      MEDIA_VIEWER_RE.test(url) ||
+      SHORT_URL_RE.test(url) ||
+      DIRECT_IMAGE_RE.test(url) ||
+      DIRECT_VIDEO_RE.test(url))
+  );
 }
 
 export async function detectReddit(url) {
   if (!looksLikeRedditPost(url)) return null;
+  logFetcher("reddit", "detect:start", { url });
+
+  if (DIRECT_IMAGE_RE.test(url)) {
+    logFetcher("reddit", "detect:direct-image", { url });
+    return detectDirectImage(url);
+  }
+  if (DIRECT_VIDEO_RE.test(url)) {
+    logFetcher("reddit", "detect:direct-video", { url });
+    return { kind: "video" };
+  }
 
   // The standalone media viewer doesn't have its own JSON endpoint — the
   // actual media URL is embedded in the query string. Handle that path
   // separately so we don't fall through into the post-JSON flow below.
   if (MEDIA_VIEWER_RE.test(url)) {
+    logFetcher("reddit", "detect:media-viewer", { url });
     return detectMediaViewer(url);
   }
 
@@ -47,20 +71,29 @@ export async function detectReddit(url) {
   // raw_json=1 asks Reddit not to HTML-escape string fields in the payload.
   const base = url.split(/[?#]/, 1)[0].replace(/\/$/, "");
   const apiUrl = `${base}.json?raw_json=1`;
+  logFetcher("reddit", "json:fetch", { url: apiUrl });
 
   let data;
   try {
     const resp = await fetch(apiUrl, { credentials: "omit" });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      logFetcher("reddit", "json:error", { url: apiUrl, status: resp.status });
+      if (resp.status === 403 || resp.status === 429) return { kind: "domFallback" };
+      throw new Error(`HTTP ${resp.status}`);
+    }
     data = await resp.json();
   } catch (e) {
-    // Network or parse failure — let yt-dlp have a go. It'll error cleanly
-    // if the URL is truly unusable.
-    return { kind: "video" };
+    logFetcher("reddit", "json:exception", { url: apiUrl, error: e?.message || String(e) });
+    // Network, access, or parse failures are common on Reddit's JSON
+    // endpoint; let the popup try rendered-page media before yt-dlp.
+    return { kind: "domFallback" };
   }
 
   const post = data?.[0]?.data?.children?.[0]?.data;
-  if (!post) return { kind: "video" };
+  if (!post) {
+    logFetcher("reddit", "json:empty", { url: apiUrl });
+    return { kind: "video" };
+  }
 
   const title = post.title ?? "reddit post";
   // created_utc is already unix seconds — no conversion needed. 0 when
@@ -78,6 +111,7 @@ export async function detectReddit(url) {
       if (item) items.push(item);
     }
     if (items.length === 0) return { kind: "video" };
+    logFetcher("reddit", "gallery:result", { url, itemCount: items.length });
     return { kind: "gallery", title, handle, date, items };
   }
 
@@ -98,6 +132,7 @@ export async function detectReddit(url) {
     // the popup can show a real file size and confirmed MIME. Failures are
     // non-fatal — if the HEAD is blocked we just omit size/mime.
     try {
+      logFetcher("reddit", "image-head:fetch", { url: post.url });
       const head = await fetch(post.url, { method: "HEAD", credentials: "omit" });
       if (head.ok) {
         const len = head.headers.get("Content-Length");
@@ -106,6 +141,7 @@ export async function detectReddit(url) {
         if (mime) info.mime = mime.split(";")[0].trim();
       }
     } catch {}
+    logFetcher("reddit", "image:result", { url: post.url, width: info.width, height: info.height });
     return info;
   }
 
@@ -133,6 +169,31 @@ export async function detectRedditCached(url) {
     } catch {}
   }
   return info;
+}
+
+export async function getRedditDomInfo(tabId) {
+  try {
+    let targetTabId = tabId;
+    if (!targetTabId) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      targetTabId = tab?.id;
+    }
+    if (!targetTabId) return null;
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: targetTabId },
+      func: scrapeRedditDom,
+    });
+    const raw = results?.[0]?.result;
+    if (!raw) return null;
+    logFetcher("reddit", "dom:result", {
+      kind: raw.kind || "",
+      itemCount: raw.items?.length || (raw.kind === "image" ? 1 : 0),
+    });
+    if (raw.kind === "image" && raw.imageUrl) return raw;
+    if (raw.kind === "gallery" && raw.items?.length) return raw;
+    if (raw.kind === "video") return raw;
+  } catch {}
+  return null;
 }
 
 // detectMediaViewer handles https://www.reddit.com/media?url=... URLs that
@@ -184,6 +245,153 @@ async function detectMediaViewer(url) {
   } catch {}
   return info;
 }
+
+async function detectDirectImage(imageUrl) {
+  const basename = basenameFromUrl(imageUrl);
+  const title = (basename.replace(/\.[^.]+$/, "") || "Reddit image").trim();
+  const info = {
+    kind: "image",
+    title,
+    imageUrl,
+    width: 0,
+    height: 0,
+    thumbUrl: imageUrl,
+    basename,
+  };
+  try {
+    logFetcher("reddit", "direct-image-head:fetch", { url: imageUrl });
+    const head = await fetch(imageUrl, { method: "HEAD", credentials: "omit" });
+    if (head.ok) {
+      const len = head.headers.get("Content-Length");
+      const mime = head.headers.get("Content-Type");
+      if (len) info.bytes = parseInt(len, 10);
+      if (mime) info.mime = mime.split(";")[0].trim();
+    }
+  } catch {}
+  logFetcher("reddit", "direct-image:result", {
+    url: imageUrl,
+    bytes: info.bytes || 0,
+    mime: info.mime || "",
+  });
+  return info;
+}
+
+function scrapeRedditDom() {
+  function findRedditMediaRoots() {
+    const roots = [
+      ...document.querySelectorAll(
+        [
+          "shreddit-post",
+          '[id^="media-preview-"]',
+          ".media-preview",
+          "gallery-carousel",
+          "faceplate-carousel",
+          "[data-testid='post-container']",
+        ].join(", "),
+      ),
+    ];
+    const unique = [];
+    const rootSeen = new Set();
+    for (const root of roots) {
+      if (!root || rootSeen.has(root)) continue;
+      rootSeen.add(root);
+      unique.push(root);
+    }
+    return unique.length > 0 ? unique : [document.body];
+  }
+
+  const title =
+    document.querySelector('meta[property="og:title"]')?.getAttribute("content") ||
+    document.querySelector('meta[name="twitter:title"]')?.getAttribute("content") ||
+    document.querySelector("shreddit-post")?.getAttribute("post-title") ||
+    document.querySelector("a.title")?.textContent?.trim() ||
+    document.querySelector("h1")?.textContent?.trim() ||
+    "reddit post";
+  const handle =
+    document.querySelector("shreddit-post")?.getAttribute("author") ||
+    document.querySelector(".tagline .author")?.textContent?.trim()?.replace(/^u\//, "") ||
+    document.querySelector('[slot="authorName"]')?.textContent?.trim()?.replace(/^u\//, "") ||
+    "";
+  const seen = new Set();
+  const items = [];
+  const mediaRoots = findRedditMediaRoots();
+  const hasPostVideo = mediaRoots.some((root) => {
+    return (
+      root.querySelector("video") ||
+      root.querySelector("[data-hls-url], [data-mpd-url]") ||
+      root.getAttribute?.("data-hls-url") ||
+      root.getAttribute?.("data-mpd-url")
+    );
+  });
+  const add = (src, width = 0, height = 0) => {
+    if (!src || seen.has(src)) return;
+    let u;
+    try {
+      u = new URL(src, location.href);
+    } catch {
+      return;
+    }
+    if (!/^(?:i|preview)\.redd\.it$/i.test(u.hostname)) return;
+    if (!/\.(?:jpe?g|png|gif|webp)$/i.test(u.pathname)) return;
+    const hintedWidth = Number(u.searchParams.get("width")) || 0;
+    const hintedHeight = Number(u.searchParams.get("height")) || 0;
+    const w = Number(width) || hintedWidth || 0;
+    const h = Number(height) || hintedHeight || 0;
+    const isSquareThumb =
+      u.searchParams.get("crop")?.startsWith("1:1") ||
+      (hintedWidth > 0 && hintedHeight > 0 && hintedWidth <= 200 && hintedHeight <= 200);
+    if (isSquareThumb) return;
+    if (w > 0 && h > 0 && w <= 200 && h <= 200) return;
+    seen.add(u.href);
+    const basename = u.pathname.split("/").pop() || "image.jpg";
+    const ext = (basename.match(/\.([^.]+)$/)?.[1] || "jpg").toLowerCase();
+    items.push({
+      url: u.href,
+      ext,
+      width: w,
+      height: h,
+      thumbUrl: u.href,
+      mime: `image/${ext === "jpg" ? "jpeg" : ext}`,
+      basename,
+    });
+  };
+  for (const root of mediaRoots) {
+    for (const img of root.querySelectorAll("img")) {
+      add(
+        img.currentSrc || img.src,
+        img.naturalWidth || img.width,
+        img.naturalHeight || img.height,
+      );
+    }
+  }
+  if (items.length === 0) {
+    add(
+      document.querySelector('meta[property="og:image"]')?.getAttribute("content"),
+      Number(document.querySelector('meta[property="og:image:width"]')?.getAttribute("content")) ||
+        0,
+      Number(document.querySelector('meta[property="og:image:height"]')?.getAttribute("content")) ||
+        0,
+    );
+  }
+  if (items.length === 0 && hasPostVideo) return { kind: "video" };
+  if (items.length === 1) {
+    return {
+      kind: "image",
+      title,
+      handle,
+      imageUrl: items[0].url,
+      width: items[0].width,
+      height: items[0].height,
+      thumbUrl: items[0].thumbUrl,
+      mime: items[0].mime,
+      basename: items[0].basename,
+    };
+  }
+  if (items.length > 1) return { kind: "gallery", title, handle, items };
+  return null;
+}
+
+export const __test = { scrapeRedditDom };
 
 // extractGalleryItem turns one media_metadata entry into the per-item shape
 // the popup's gallery picker consumes. Handles both static Image entries

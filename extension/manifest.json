@@ -7,6 +7,8 @@
   "permissions": ["nativeMessaging", "activeTab", "storage", "scripting", "cookies", "downloads"],
   "host_permissions": [
     "*://*.reddit.com/*",
+    "*://reddit.com/*",
+    "*://redd.it/*",
     "*://*.redd.it/*",
     "*://twitter.com/*",
     "*://*.twitter.com/*",

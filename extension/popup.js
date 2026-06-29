@@ -1,7 +1,7 @@
 // Popup talks to the service worker (not directly to the native host), so
 // downloads survive the popup being closed and reopened.
 
-import { detectRedditCached, looksLikeRedditPost } from "./reddit.js";
+import { detectRedditCached, looksLikeRedditPost, getRedditDomInfo } from "./reddit.js";
 import {
   detectTweetCached,
   looksLikeTweet,
@@ -43,6 +43,8 @@ import {
   isKnownHost,
 } from "./shared.js";
 import { friendlyError } from "./popup-errors.js";
+import { formatTimestamp, validateTimestamp } from "./popup-helpers.js";
+import { logFetcher } from "./fetcher-log.js";
 
 // errorContext snapshots the popup-side state friendlyError /
 // prettifyYtdlpError used to read directly via module globals. Built
@@ -172,6 +174,8 @@ let autoFetchPending = false;
 let currentTitle = "";
 let currentUploader = "";
 let currentUploaderId = "";
+let currentThumbnail = "";
+let currentDuration = 0;
 // When we branch into the image/gallery flow, galleryState carries the
 // detected payload (URL(s), title) so the Download button knows what to do.
 let galleryState = null;
@@ -613,6 +617,7 @@ async function runFetchFlow(opts) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.url) tabUrl = tab.url;
   } catch {}
+  logFetcher("popup", "fetch-flow:start", { url: tabUrl, explicit });
   show("loading");
   hide("picker");
   hide("image-picker");
@@ -624,12 +629,18 @@ async function runFetchFlow(opts) {
   // arrow-button captures in the same session-storage list, then
   // render from storage so everything round-trips across popup close.
   if (onFacebook) {
+    logFetcher("facebook", "route", { url: tabUrl, path: isFacebookVideoUrl(tabUrl) ? "yt-dlp-video" : "interceptor-dom" });
     let fetchedInfo = null;
     if (!isFacebookVideoUrl(tabUrl)) {
       fetchedInfo = await getFacebookStoryFromInterceptor();
       if (!fetchedInfo) fetchedInfo = await getFacebookDomInfo();
     }
     const fetchedItems = infoToItems(fetchedInfo);
+    logFetcher("facebook", "scrape-result", {
+      url: tabUrl,
+      kind: fetchedInfo?.kind || "",
+      itemCount: fetchedItems.length,
+    });
     if (fetchedItems.length > 0) {
       await persistFetchedItems(fetchedItems);
     }
@@ -646,26 +657,73 @@ async function runFetchFlow(opts) {
 
   // Non-Facebook sites — unchanged behavior, no capture merging.
   if (looksLikeRedditPost(tabUrl)) {
+    logFetcher("reddit", "route", { url: tabUrl, path: "detector" });
     const info = await detectRedditCached(tabUrl);
+    logFetcher("reddit", "detector-result", {
+      url: tabUrl,
+      kind: info?.kind || "",
+      itemCount: info?.items?.length || (info?.kind === "image" ? 1 : 0),
+    });
     if (info?.kind === "image")   { showImagePicker(info);   return; }
     if (info?.kind === "gallery") { showGalleryPicker(info); return; }
+    if (info?.kind === "domFallback") {
+      logFetcher("reddit", "dom-fallback:start", { url: tabUrl });
+      const domInfo = await getRedditDomInfo();
+      logFetcher("reddit", "dom-fallback:result", {
+        url: tabUrl,
+        kind: domInfo?.kind || "",
+        itemCount: domInfo?.items?.length || (domInfo?.kind === "image" ? 1 : 0),
+      });
+      if (domInfo?.kind === "image")   { showImagePicker(domInfo);   return; }
+      if (domInfo?.kind === "gallery") { showGalleryPicker(domInfo); return; }
+    }
   } else if (looksLikeTweet(tabUrl)) {
+    logFetcher("twitter", "route", { url: tabUrl, path: "syndication-dom" });
     const info = await detectTweetCached(tabUrl);
+    logFetcher("twitter", "detector-result", {
+      url: tabUrl,
+      kind: info?.kind || "",
+      itemCount: info?.items?.length || (info?.kind === "image" ? 1 : 0),
+    });
     if (info?.kind === "image")   { showImagePicker(info);   return; }
     if (info?.kind === "gallery") { showGalleryPicker(info); return; }
     const domInfo = await getTwitterDomInfo();
+    logFetcher("twitter", "dom-result", {
+      url: tabUrl,
+      kind: domInfo?.kind || "",
+      itemCount: domInfo?.items?.length || (domInfo?.kind === "image" ? 1 : 0),
+    });
     if (domInfo?.kind === "image")   { showImagePicker(domInfo);   return; }
     if (domInfo?.kind === "gallery") { showGalleryPicker(domInfo); return; }
   } else if (looksLikeInstagram(tabUrl)) {
+    logFetcher("instagram", "route", {
+      url: tabUrl,
+      path: isInstagramStoryUrl(tabUrl) ? "story-api-dom" : "post-api-dom",
+    });
     if (isInstagramStoryUrl(tabUrl)) {
       const storyInfo = await getInstagramStoryInfo(tabUrl);
+      logFetcher("instagram", "story-result", {
+        url: tabUrl,
+        kind: storyInfo?.kind || "",
+        itemCount: storyInfo?.items?.length || (storyInfo?.kind === "image" ? 1 : 0),
+      });
       if (storyInfo?.kind === "gallery") { showGalleryPicker(storyInfo); return; }
       if (storyInfo?.kind === "image")   { showImagePicker(storyInfo);   return; }
     } else {
       const apiInfo = await getInstagramPostInfo(tabUrl);
+      logFetcher("instagram", "api-result", {
+        url: tabUrl,
+        kind: apiInfo?.kind || "",
+        itemCount: apiInfo?.items?.length || (apiInfo?.kind === "image" ? 1 : 0),
+      });
       if (apiInfo?.kind === "gallery") { showGalleryPicker(apiInfo); return; }
       if (apiInfo?.kind === "image")   { showImagePicker(apiInfo);   return; }
       const domInfo = await getInstagramDomInfo();
+      logFetcher("instagram", "dom-result", {
+        url: tabUrl,
+        kind: domInfo?.kind || "",
+        itemCount: domInfo?.items?.length || (domInfo?.kind === "image" ? 1 : 0),
+      });
       if (domInfo?.kind === "image")   { showImagePicker(domInfo);   return; }
       if (domInfo?.kind === "gallery") { showGalleryPicker(domInfo); return; }
     }
@@ -673,6 +731,7 @@ async function runFetchFlow(opts) {
     // specific extractors didn't recognise the URL shape — yt-dlp can
     // still handle them, so let them through to listFormats below.
   } else if (looksLikeTikTok(tabUrl) && isTikTokPhotoUrl(tabUrl)) {
+    logFetcher("tiktok", "route", { url: tabUrl, path: "photo-dom" });
     // TikTok photo (slideshow) post. yt-dlp's photo-mode extractor
     // exists but its format listing — one entry per slide plus the
     // background-music audio track — doesn't render cleanly in the
@@ -681,12 +740,18 @@ async function runFetchFlow(opts) {
     // to listFormats only if the DOM scrape comes back empty
     // (logged-out, slow-loading page, etc.).
     const photoInfo = await getTikTokPhotoInfo(tabUrl);
+    logFetcher("tiktok", "photo-result", {
+      url: tabUrl,
+      kind: photoInfo?.kind || "",
+      itemCount: photoInfo?.items?.length || (photoInfo?.kind === "image" ? 1 : 0),
+    });
     if (photoInfo?.kind === "image")   { showImagePicker(photoInfo);   return; }
     if (photoInfo?.kind === "gallery") { showGalleryPicker(photoInfo); return; }
     dlog("tiktok photo scrape: nothing visible, falling back to listFormats", {
       url: tabUrl,
     });
   } else if (looksLikeTikTok(tabUrl) && !isTikTokVideoUrl(tabUrl)) {
+    logFetcher("tiktok", "route", { url: tabUrl, path: "dom-resolve" });
     // TikTok's SPA keeps the address bar on the feed URL (`/`, `/foryou`,
     // `/en/`) while a post plays, so yt-dlp sees "https://tiktok.com/" and
     // errors with "Unsupported URL". Scrape the currently-visible post's
@@ -696,6 +761,7 @@ async function runFetchFlow(opts) {
     // instead of forwarding a doomed URL to yt-dlp.
     const resolved = await resolveTikTokUrlFromDom();
     if (resolved && resolved.url) {
+      logFetcher("tiktok", "dom-resolve:result", { url: tabUrl, resolvedUrl: resolved.url, source: resolved.source });
       dlog("tiktok DOM resolve", { from: tabUrl, to: resolved.url, source: resolved.source });
       tabUrl = resolved.url;
     } else if (resolved) {
@@ -720,12 +786,14 @@ async function runFetchFlow(opts) {
   // extractor will just fail anyway. The `explicit` flag bypasses
   // the gate when the user clicked Fetch on the prompt.
   if (explicit || await shouldAutoProbe(tabUrl)) {
+    logFetcher("popup", "list-formats:route", { url: tabUrl, explicit });
     show("loading");
     hide("fetch-prompt");
     requestListFormats();
     return;
   }
   hide("loading");
+  logFetcher("popup", "fetch-prompt", { url: tabUrl });
   showFetchPrompt({
     hint: "This site isn't a known media source. Click to ask yt-dlp anyway — most other sites work.",
   });
@@ -814,6 +882,7 @@ function requestListFormats(forceCookies) {
     cookiesStrategy: cookiesStrategyMode(),
     attempt: forceCookies === undefined ? "initial" : "retry-with-cookies",
   });
+  logFetcher("popup", "list-formats:send", { url: tabUrl, useCookies });
   port.postMessage({ cmd: "listFormats", url: tabUrl, useCookies });
 }
 
@@ -1215,6 +1284,13 @@ function handleFormats(msg) {
     uploader: msg.uploader,
     formats: (msg.items ?? []).length,
   });
+  logFetcher("youtube", "formats-result", {
+    url: tabUrl,
+    title: msg.title,
+    thumbnailUrl: msg.thumbnail || "",
+    duration: msg.duration || 0,
+    formatCount: (msg.items ?? []).length,
+  });
   // Persist the formats payload so closing+reopening the popup on
   // the same URL restores this picker instead of the empty fetch
   // prompt. Cleared by dismissPicker, by URL change, or by tab close.
@@ -1232,11 +1308,14 @@ function handleFormats(msg) {
   currentTitle = msg.title || tabUrl;
   currentUploader = msg.uploader || "";
   currentUploaderId = msg.uploaderId || "";
+  currentThumbnail = msg.thumbnail || "";
+  currentDuration = Number(msg.duration) || 0;
   el("title").textContent = currentTitle;
   renderVideoCard(msg);
   populateQualityOptions(msg.items);
   wireKindSwitch();
   wireVideoFilenameMode();
+  wireYouTubeImageActions();
   initDownloadControls("#picker");
   el("download").addEventListener("click", startDownload);
   show("picker");
@@ -1260,6 +1339,46 @@ function wireVideoFilenameMode() {
   };
   refresh();
   sel.onchange = refresh;
+}
+
+function wireYouTubeImageActions() {
+  const isYoutube = (() => {
+    try {
+      const host = new URL(tabUrl).hostname.toLowerCase();
+      return host === "youtube.com" || host.endsWith(".youtube.com") ||
+        host === "youtu.be" || host.endsWith(".youtu.be");
+    } catch {
+      return false;
+    }
+  })();
+  const box = el("youtube-image-actions");
+  if (!box) return;
+  box.hidden = !isYoutube;
+  if (!isYoutube) return;
+  const slider = el("yt-frame-slider");
+  const input = el("yt-frame-time");
+  if (slider) {
+    slider.max = String(Math.max(0, Math.floor(currentDuration)));
+    slider.value = "0";
+  }
+  if (input) input.value = "0:00";
+  slider.oninput = () => {
+    input.value = formatTimestamp(Number(slider.value) || 0);
+  };
+  input.onchange = () => {
+    const v = validateTimestamp(input.value, currentDuration);
+    if (v.ok) slider.value = String(Math.floor(v.seconds));
+  };
+  el("yt-save-thumb").onclick = startThumbnailDownload;
+  el("yt-save-current-frame").onclick = startCurrentFrameDownload;
+  el("yt-save-timestamp-frame").onclick = () => {
+    const v = validateTimestamp(input.value, currentDuration);
+    if (!v.ok) {
+      inlineRenderError({ code: "bad_request", message: "Enter a timestamp within the video duration." });
+      return;
+    }
+    startFrameDownload(v.seconds);
+  };
 }
 
 function renderVideoCard(msg) {
@@ -1420,8 +1539,96 @@ function startDownload() {
     askPath: !!msg.askPath,
     destDir: msg.destDir,
   });
+  logFetcher("popup", "download:send", {
+    url: tabUrl,
+    kind,
+    height,
+    useCookies: msg.useCookies,
+    askPath: !!msg.askPath,
+  });
   dlogLastPct = -10;
   activeJobId = msg.jobId;
+  clearInlineStatus();
+  disableActivePrimary();
+  port.postMessage(msg);
+  inlineRenderRunning({ percent: 0 });
+}
+
+function youtubeBaseName(kind, seconds = 0) {
+  const handle = pickHandleText(currentUploaderId, currentUploader);
+  const base = handle ? `${handle} - ${currentTitle}` : currentTitle;
+  if (kind === "thumbnail") return buildSafeFilename(`${base} thumbnail`, "jpg");
+  return buildSafeFilename(`${base} frame ${formatTimestamp(seconds).replace(/:/g, "-")}`, "png");
+}
+
+function startThumbnailDownload() {
+  if (!currentThumbnail) {
+    inlineRenderError({ code: "bad_request", message: "No thumbnail URL was reported for this video." });
+    return;
+  }
+  const handle = pickHandleText(currentUploaderId, currentUploader);
+  const msg = {
+    cmd: "downloadUrl",
+    jobId: crypto.randomUUID(),
+    url: currentThumbnail,
+    pageUrl: tabUrl,
+    defaultFileName: youtubeBaseName("thumbnail"),
+  };
+  if (!saveSettings.downloadAutomatically) {
+    msg.askPath = true;
+    msg.startDir = saveSettings.destinationDir || saveSettings.lastDir || saveSettings.specificDestDir || "";
+    msg.dialogTitle = "Save thumbnail as...";
+  } else {
+    msg.destDir = saveSettings.destinationDir || "";
+    const album = currentAlbumName(handle);
+    if (album) msg.albumName = album;
+  }
+  activeJobId = msg.jobId;
+  logFetcher("youtube", "thumbnail-download:send", { url: currentThumbnail, pageUrl: tabUrl, askPath: !!msg.askPath });
+  clearInlineStatus();
+  disableActivePrimary();
+  port.postMessage(msg);
+  inlineRenderRunning({ percent: 0 });
+}
+
+async function startCurrentFrameDownload() {
+  let seconds = 0;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      const result = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => document.querySelector("video")?.currentTime ?? 0,
+      });
+      seconds = Number(result?.[0]?.result) || 0;
+    }
+  } catch {}
+  logFetcher("youtube", "current-frame:timestamp", { url: tabUrl, timestamp: seconds });
+  startFrameDownload(seconds);
+}
+
+function startFrameDownload(seconds) {
+  const handle = pickHandleText(currentUploaderId, currentUploader);
+  const msg = {
+    cmd: "extractFrame",
+    jobId: crypto.randomUUID(),
+    url: tabUrl,
+    pageUrl: tabUrl,
+    timestamp: seconds,
+    useCookies: effectiveUseCookies,
+    defaultFileName: youtubeBaseName("frame", seconds),
+  };
+  if (!saveSettings.downloadAutomatically) {
+    msg.askPath = true;
+    msg.startDir = saveSettings.destinationDir || saveSettings.lastDir || saveSettings.specificDestDir || "";
+    msg.dialogTitle = "Save frame as...";
+  } else {
+    msg.destDir = saveSettings.destinationDir || "";
+    const album = currentAlbumName(handle);
+    if (album) msg.albumName = album;
+  }
+  activeJobId = msg.jobId;
+  logFetcher("youtube", "frame-extract:send", { url: tabUrl, timestamp: seconds, askPath: !!msg.askPath });
   clearInlineStatus();
   disableActivePrimary();
   port.postMessage(msg);

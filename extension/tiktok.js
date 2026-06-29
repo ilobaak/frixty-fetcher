@@ -15,6 +15,7 @@
 //   getTikTokPhotoInfo(tabUrl)   — DOM-scrape image URLs out of a photo post
 
 import { basenameFromUrl, extensionFromUrl } from "./shared.js";
+import { logFetcher } from "./fetcher-log.js";
 
 const HOST_RE = /(^|\.)tiktok\.com$/i;
 const VIDEO_PATH_RE = /^\/@[^/]+\/(?:video|photo)\/\d+/i;
@@ -70,6 +71,7 @@ export function isTikTokPhotoUrl(url) {
 export async function resolveTikTokUrlFromDom() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || tab.id === undefined) return null;
+  logFetcher("tiktok", "dom-resolve:start", { tabUrl: tab.url || "" });
   let out = null;
   try {
     const results = await chrome.scripting.executeScript({
@@ -78,10 +80,14 @@ export async function resolveTikTokUrlFromDom() {
     });
     out = results?.[0]?.result;
     if (!out || typeof out !== "object") out = null;
-  } catch {
+  } catch (e) {
+    logFetcher("tiktok", "dom-resolve:exception", { error: e?.message || String(e) });
     out = null;
   }
-  if (out && out.url) return out;
+  if (out && out.url) {
+    logFetcher("tiktok", "dom-resolve:result", { resolvedUrl: out.url, source: out.source || "" });
+    return out;
+  }
   // DOM scrape missed — ask the content script's interceptor cache.
   try {
     const resp = await new Promise((resolve) => {
@@ -92,6 +98,10 @@ export async function resolveTikTokUrlFromDom() {
     });
     if (resp && resp.url) {
       const tried = out && out.tried ? [...out.tried, "interceptor-cache"] : ["interceptor-cache"];
+      logFetcher("tiktok", "dom-resolve:result", {
+        resolvedUrl: resp.url,
+        source: "interceptor-cache",
+      });
       return { url: resp.url, source: "interceptor-cache", tried };
     }
   } catch {}
@@ -111,7 +121,13 @@ export async function resolveTikTokUrlFromDom() {
         out && out.tried
           ? [...out.tried, "interceptor-cache", "main-world-cache"]
           : ["main-world-cache"];
-      if (dump.url) return { url: dump.url, source: "main-world-cache", tried };
+      if (dump.url) {
+        logFetcher("tiktok", "dom-resolve:result", {
+          resolvedUrl: dump.url,
+          source: "main-world-cache",
+        });
+        return { url: dump.url, source: "main-world-cache", tried };
+      }
       // No URL but cache info — surface it in tried-array for
       // diagnostics even on the no-match return.
       if (out) out.tried = tried;
@@ -125,6 +141,7 @@ export async function resolveTikTokUrlFromDom() {
       }
     }
   } catch {}
+  logFetcher("tiktok", "dom-resolve:no-match", { tried: out?.tried || [] });
   return out;
 }
 
@@ -423,6 +440,7 @@ function findPostInTree(node, depth) {
 export async function getTikTokPhotoInfo(tabUrl) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || tab.id === undefined) return null;
+  logFetcher("tiktok", "photo-dom:start", { url: tabUrl });
   let scraped;
   try {
     const results = await chrome.scripting.executeScript({
@@ -430,12 +448,19 @@ export async function getTikTokPhotoInfo(tabUrl) {
       func: scrapeTikTokPhotoMedia,
     });
     scraped = results?.[0]?.result;
-  } catch {
+  } catch (e) {
+    logFetcher("tiktok", "photo-dom:exception", { url: tabUrl, error: e?.message || String(e) });
     return null;
   }
   if (!scraped || !Array.isArray(scraped.images) || scraped.images.length === 0) {
+    logFetcher("tiktok", "photo-dom:no-media", { url: tabUrl });
     return null;
   }
+  logFetcher("tiktok", "photo-dom:scraped", {
+    url: tabUrl,
+    imageCount: scraped.images.length,
+    handle: scraped.handle || "",
+  });
   // Author handle: prefer DOM, fall back to URL path /@<handle>/photo/<id>.
   let handle = scraped.handle || "";
   if (!handle) {
@@ -460,6 +485,7 @@ export async function getTikTokPhotoInfo(tabUrl) {
   const title = scraped.title || "TikTok photo post";
   if (items.length === 1) {
     const i = items[0];
+    logFetcher("tiktok", "photo-dom:image", { url: tabUrl, imageUrl: i.url });
     return {
       kind: "image",
       title,
@@ -472,6 +498,7 @@ export async function getTikTokPhotoInfo(tabUrl) {
       basename: i.basename,
     };
   }
+  logFetcher("tiktok", "photo-dom:gallery", { url: tabUrl, itemCount: items.length });
   return { kind: "gallery", title, handle, items };
 }
 

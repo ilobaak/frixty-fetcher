@@ -117,6 +117,19 @@
             <input type="checkbox" id="include-subs" />
             <span>Include Subtitles File (if available)</span>
           </label>
+          <div class="youtube-image-actions" id="youtube-image-actions" hidden>
+            <button id="yt-save-thumb" type="button" class="secondary">Save thumbnail</button>
+            <button id="yt-save-current-frame" type="button" class="secondary">
+              Save current frame
+            </button>
+            <div class="timestamp-row">
+              <input id="yt-frame-slider" type="range" min="0" max="0" step="1" value="0" />
+              <input id="yt-frame-time" type="text" value="0:00" aria-label="Timestamp" />
+            </div>
+            <button id="yt-save-timestamp-frame" type="button" class="secondary">
+              Save frame at timestamp
+            </button>
+          </div>
         </div>
       </div>
       <p class="muted" id="save-mode-hint" hidden>—</p>

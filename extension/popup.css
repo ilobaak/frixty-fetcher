@@ -274,6 +274,33 @@ select {
   flex: 1;
   font-weight: 400;
 }
+.youtube-image-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+.youtube-image-actions button {
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.timestamp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 6px;
+  align-items: center;
+}
+.timestamp-row input[type="text"] {
+  min-width: 0;
+  box-sizing: border-box;
+  font:
+    11px ui-monospace,
+    monospace;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
 .media-card .card-position {
   position: absolute;
   top: 6px;

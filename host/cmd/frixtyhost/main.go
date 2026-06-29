@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ilobaak/frixty-fetcher/host/internal/ffmpeg"
 	"github.com/ilobaak/frixty-fetcher/host/internal/hostlog"
 	"github.com/ilobaak/frixty-fetcher/host/internal/jobs"
 	"github.com/ilobaak/frixty-fetcher/host/internal/messaging"
@@ -34,24 +35,25 @@ const (
 )
 
 type request struct {
-	Action          string          `json:"action"`
-	URL             string          `json:"url,omitempty"`
-	JobID           string          `json:"jobId,omitempty"`
-	ReqID           string          `json:"reqId,omitempty"`
-	Selection       ytdlp.Selection `json:"selection,omitempty"`
-	DestDir         string          `json:"destDir,omitempty"`
-	AskPath         bool            `json:"askPath,omitempty"`         // open Save As dialog before download
-	AskDir          bool            `json:"askDir,omitempty"`          // open folder picker (galleries — multiple files to one folder)
-	AskPerItem      bool            `json:"askPerItem,omitempty"`      // per-item Save As dialog for galleries
-	DefaultFileName string          `json:"defaultFileName,omitempty"` // pre-filled name in the Save As dialog
-	StartDir        string          `json:"startDir,omitempty"`        // initial directory for the dialog
-	DialogTitle     string          `json:"dialogTitle,omitempty"`
-	AlbumName       string          `json:"albumName,omitempty"` // subfolder inside destDir for gallery downloads
-	Items           []galleryItem   `json:"items,omitempty"`     // gallery item list (url + ext per entry)
-	Path             string          `json:"path,omitempty"`      // used by revealInFileManager
-	CookiesText      string          `json:"cookiesText,omitempty"` // Netscape cookies.txt content; written to a temp file and passed to yt-dlp --cookies
+	Action           string          `json:"action"`
+	URL              string          `json:"url,omitempty"`
+	JobID            string          `json:"jobId,omitempty"`
+	ReqID            string          `json:"reqId,omitempty"`
+	Selection        ytdlp.Selection `json:"selection,omitempty"`
+	DestDir          string          `json:"destDir,omitempty"`
+	AskPath          bool            `json:"askPath,omitempty"`         // open Save As dialog before download
+	AskDir           bool            `json:"askDir,omitempty"`          // open folder picker (galleries — multiple files to one folder)
+	AskPerItem       bool            `json:"askPerItem,omitempty"`      // per-item Save As dialog for galleries
+	DefaultFileName  string          `json:"defaultFileName,omitempty"` // pre-filled name in the Save As dialog
+	StartDir         string          `json:"startDir,omitempty"`        // initial directory for the dialog
+	DialogTitle      string          `json:"dialogTitle,omitempty"`
+	AlbumName        string          `json:"albumName,omitempty"`        // subfolder inside destDir for gallery downloads
+	Items            []galleryItem   `json:"items,omitempty"`            // gallery item list (url + ext per entry)
+	Path             string          `json:"path,omitempty"`             // used by revealInFileManager
+	CookiesText      string          `json:"cookiesText,omitempty"`      // Netscape cookies.txt content; written to a temp file and passed to yt-dlp --cookies
 	FilenameTemplate string          `json:"filenameTemplate,omitempty"` // yt-dlp -o template; empty = default "%(title)s.%(ext)s"
 	Kind             string          `json:"kind,omitempty"`             // downloadUrl-level Kind (combined/audio/video) — same semantics as galleryItem.Kind
+	Timestamp        float64         `json:"timestamp,omitempty"`
 }
 
 type galleryItem struct {
@@ -86,7 +88,8 @@ type server struct {
 	// resolveYt, when non-nil, overrides the normal ytdlp.Resolve() lookup.
 	// Tests set it to simulate "yt-dlp missing" without having to munge PATH
 	// or the managed-binary location.
-	resolveYt func() string
+	resolveYt     func() string
+	resolveFfmpeg func() (string, error)
 	// fetchAndConvert downloads url to destPath, optionally with the
 	// kind-specific audio/video post-processing step. Stored as a field
 	// (rather than a plain method) so the gallery and downloadUrl
@@ -94,6 +97,7 @@ type server struct {
 	// substitute a deterministic fake. Production wires it to
 	// defaultFetchAndConvert at server construction time.
 	fetchAndConvert func(ctx context.Context, url, destPath, kind string) (string, error)
+	extractFrame    func(ctx context.Context, ytbin, ffbin, pageURL, cookiesFile, destPath string, timestamp float64) (string, error)
 	// inflight tracks short-lived dispatch goroutines (listFormats,
 	// pickFolder, selfUpdate). Tests Wait on it after dispatch; production
 	// can use it for graceful shutdown if we ever care. Long-running
@@ -124,6 +128,13 @@ func (s *server) ytBin() string {
 	return p
 }
 
+func (s *server) ffmpegBin() (string, error) {
+	if s.resolveFfmpeg != nil {
+		return s.resolveFfmpeg()
+	}
+	return ffmpeg.Resolve()
+}
+
 func main() {
 	// Any accidental write to stdout corrupts the native messaging stream.
 	// Wire log to a file under the user config dir alongside stderr so
@@ -144,6 +155,7 @@ func main() {
 
 	s := &server{out: out, jobs: tracker, updater: up, hostUpdater: hostUp}
 	s.fetchAndConvert = s.defaultFetchAndConvert
+	s.extractFrame = s.defaultExtractFrame
 
 	// Kick off the download if the managed yt-dlp binary is missing
 	// (first-run bootstrap) or the 12h throttle window has elapsed. Runs in
@@ -203,6 +215,8 @@ func (s *server) dispatch(req request) {
 		s.goHandler(func() { s.handleSelfHostUpdate(req) })
 	case "downloadUrl":
 		s.handleDownloadUrl(req)
+	case "extractFrame":
+		s.handleExtractFrame(req)
 	case "downloadGallery":
 		s.handleDownloadGallery(req)
 	case "revealInFileManager":
@@ -266,8 +280,6 @@ func (s *server) handleSelfUpdate(req request) {
 		"newVersion": newVersion,
 	}))
 }
-
-
 
 // revealInFileManager opens the OS file manager at the given path. For a
 // file, it opens the containing folder with the file highlighted where the
@@ -366,7 +378,6 @@ func (s *server) handleVersion(req request) {
 	}
 	s.send(withReqID(req, resp))
 }
-
 
 func (s *server) handleCancel(req request) {
 	if req.JobID == "" {

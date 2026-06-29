@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -30,6 +31,7 @@ func (s *server) handleDownload(req request) {
 }
 
 func (s *server) runDownload(req request) {
+	log.Printf("[frixty/host] download start job=%s url=%q kind=%s cookies=%t askPath=%t", req.JobID, req.URL, req.Selection.Kind, req.CookiesText != "", req.AskPath)
 	var destDir, outputPath string
 
 	if req.AskPath {
@@ -109,10 +111,12 @@ func (s *server) runDownload(req request) {
 	}
 	if waitErr != nil {
 		msg := formatDownloadErr(waitErr, result.Stderr(), result.StdoutLeftover, argv)
+		log.Printf("[frixty/host] download error job=%s url=%q err=%s", jobID, req.URL, msg)
 		s.sendJobError(jobID, "download_failed", msg)
 		return
 	}
 	if result.ParseErr != nil {
+		log.Printf("[frixty/host] download parse error job=%s url=%q err=%v", jobID, req.URL, result.ParseErr)
 		s.sendJobError(jobID, "parse_failed", result.ParseErr.Error())
 		return
 	}
@@ -126,6 +130,7 @@ func (s *server) runDownload(req request) {
 		"path":  result.FinalPath,
 		"bytes": size,
 	})
+	log.Printf("[frixty/host] download done job=%s path=%q bytes=%d", jobID, result.FinalPath, size)
 }
 
 // formatDownloadErr builds a user-facing error message from yt-dlp's

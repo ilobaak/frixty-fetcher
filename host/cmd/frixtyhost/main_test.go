@@ -25,6 +25,7 @@ func newTestServer(out io.Writer) *server {
 	// downloadUrl paths override fetchAndConvert with a deterministic
 	// fake before dispatching.
 	s.fetchAndConvert = s.defaultFetchAndConvert
+	s.extractFrame = s.defaultExtractFrame
 	return s
 }
 
@@ -135,11 +136,11 @@ func TestExpandHome(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := map[string]string{
-		"~":                 home,
-		"~/Downloads":       filepath.Join(home, "Downloads"),
-		"/absolute/path":    "/absolute/path",
-		"relative/path":     "relative/path",
-		"":                  "",
+		"~":              home,
+		"~/Downloads":    filepath.Join(home, "Downloads"),
+		"/absolute/path": "/absolute/path",
+		"relative/path":  "relative/path",
+		"":               "",
 	}
 	for in, want := range cases {
 		got, err := expandHome(in)

@@ -17,6 +17,7 @@
 // modules use so the popup's pickers don't need a new code path.
 
 import { shortcodeToMediaId, IG_APP_ID, basenameFromUrl, extensionFromUrl } from "./shared.js";
+import { logFetcher } from "./fetcher-log.js";
 
 const dlog = (step, ...args) => console.log("[frixty/ig]", step, ...args);
 
@@ -79,26 +80,32 @@ export async function getInstagramPostInfo(url) {
   if (!shortcode) return null;
   const mediaId = shortcodeToMediaId(shortcode);
   if (!mediaId) return null;
+  logFetcher("instagram", "post-api:start", { url, shortcode, mediaId });
 
   let payload;
   try {
-    const resp = await fetch(`https://www.instagram.com/api/v1/media/${mediaId}/info/`, {
+    const apiUrl = `https://www.instagram.com/api/v1/media/${mediaId}/info/`;
+    logFetcher("instagram", "post-api:fetch", { url: apiUrl, shortcode });
+    const resp = await fetch(apiUrl, {
       headers: { "X-IG-App-ID": IG_APP_ID },
       credentials: "include",
     });
     if (!resp.ok) {
       dlog("media info failed", { shortcode, status: resp.status });
+      logFetcher("instagram", "post-api:error", { url: apiUrl, status: resp.status });
       return null;
     }
     payload = await resp.json();
   } catch (err) {
     dlog("media info error", err?.message);
+    logFetcher("instagram", "post-api:exception", { url, error: err?.message || String(err) });
     return null;
   }
 
   const media = payload?.items?.[0];
   if (!media) {
     dlog("media info: empty items");
+    logFetcher("instagram", "post-api:empty", { url, shortcode });
     return null;
   }
 
@@ -121,10 +128,14 @@ export async function getInstagramPostInfo(url) {
     items.push(instagramSlideToItem(slide, handle));
   }
   const cleaned = items.filter(Boolean);
-  if (cleaned.length === 0) return null;
+  if (cleaned.length === 0) {
+    logFetcher("instagram", "post-api:no-media", { url, slideCount: slides.length });
+    return null;
+  }
 
   if (cleaned.length === 1 && cleaned[0].mime?.startsWith("image/")) {
     const i = cleaned[0];
+    logFetcher("instagram", "post-api:image", { url, imageUrl: i.url });
     return {
       kind: "image",
       title,
@@ -138,6 +149,7 @@ export async function getInstagramPostInfo(url) {
       basename: i.basename,
     };
   }
+  logFetcher("instagram", "post-api:gallery", { url, itemCount: cleaned.length });
   return { kind: "gallery", title, handle, date, items: cleaned };
 }
 
@@ -189,36 +201,48 @@ export async function getInstagramStoryInfo(url) {
     dlog("story: no username in path");
     return null;
   }
+  logFetcher("instagram", "story:start", { url, username });
 
   let userId = "";
   try {
-    const resp = await fetch(
-      `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
-      { headers: { "X-IG-App-ID": IG_APP_ID }, credentials: "include" },
-    );
+    const profileUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+    logFetcher("instagram", "story-profile-api:fetch", { url: profileUrl, username });
+    const resp = await fetch(profileUrl, {
+      headers: { "X-IG-App-ID": IG_APP_ID },
+      credentials: "include",
+    });
     if (!resp.ok) {
       dlog("profile fetch failed", { status: resp.status });
+      logFetcher("instagram", "story-profile-api:error", { url: profileUrl, status: resp.status });
       return null;
     }
     const data = await resp.json();
     userId = data?.data?.user?.id ?? "";
   } catch (err) {
     dlog("profile fetch error", err?.message);
+    logFetcher("instagram", "story-profile-api:exception", {
+      url,
+      error: err?.message || String(err),
+    });
     return null;
   }
   if (!userId) {
     dlog("story: no user_id for", username);
+    logFetcher("instagram", "story:no-user-id", { url, username });
     return null;
   }
 
   let reel;
   try {
-    const resp = await fetch(
-      `https://www.instagram.com/api/v1/feed/reels_media/?reel_ids=${userId}`,
-      { headers: { "X-IG-App-ID": IG_APP_ID }, credentials: "include" },
-    );
+    const reelUrl = `https://www.instagram.com/api/v1/feed/reels_media/?reel_ids=${userId}`;
+    logFetcher("instagram", "story-reels-api:fetch", { url: reelUrl, username });
+    const resp = await fetch(reelUrl, {
+      headers: { "X-IG-App-ID": IG_APP_ID },
+      credentials: "include",
+    });
     if (!resp.ok) {
       dlog("reels_media fetch failed", { status: resp.status });
+      logFetcher("instagram", "story-reels-api:error", { url: reelUrl, status: resp.status });
       return null;
     }
     const data = await resp.json();
@@ -227,15 +251,23 @@ export async function getInstagramStoryInfo(url) {
     reel = data?.reels?.[userId] ?? data?.reels_media?.[0] ?? null;
   } catch (err) {
     dlog("reels_media fetch error", err?.message);
+    logFetcher("instagram", "story-reels-api:exception", {
+      url,
+      error: err?.message || String(err),
+    });
     return null;
   }
   if (!reel) {
     dlog("story: user has no active story");
+    logFetcher("instagram", "story:no-active-story", { url, username });
     return null;
   }
 
   const rawItems = Array.isArray(reel.items) ? reel.items : [];
-  if (rawItems.length === 0) return null;
+  if (rawItems.length === 0) {
+    logFetcher("instagram", "story:no-items", { url, username });
+    return null;
+  }
 
   const items = [];
   let storyDate = 0;
@@ -273,12 +305,16 @@ export async function getInstagramStoryInfo(url) {
       storyDate = it.taken_at;
     }
   }
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    logFetcher("instagram", "story:no-media", { url, rawItemCount: rawItems.length });
+    return null;
+  }
 
   const title = `@${username} stories`;
   if (items.length === 1) {
     const i = items[0];
     if (i.mime.startsWith("image/")) {
+      logFetcher("instagram", "story:image", { url, imageUrl: i.url });
       return {
         kind: "image",
         title,
@@ -293,6 +329,7 @@ export async function getInstagramStoryInfo(url) {
       };
     }
   }
+  logFetcher("instagram", "story:gallery", { url, itemCount: items.length });
   return { kind: "gallery", title, handle: username, date: storyDate, items };
 }
 
@@ -339,6 +376,7 @@ export async function getInstagramDomInfo() {
     scraped = results?.[0]?.result;
   } catch (err) {
     dlog("scrape failed", err?.message);
+    logFetcher("instagram", "dom:exception", { error: err?.message || String(err) });
     return null;
   }
   if (!scraped) return null;
@@ -346,6 +384,11 @@ export async function getInstagramDomInfo() {
     images: scraped.images?.length ?? 0,
     videos: scraped.videos?.length ?? 0,
     handle: scraped.handle,
+  });
+  logFetcher("instagram", "dom:scraped", {
+    imageCount: scraped.images?.length || 0,
+    videoCount: scraped.videos?.length || 0,
+    handle: scraped.handle || "",
   });
 
   const images = (scraped.images ?? []).map((i) => {
@@ -376,7 +419,10 @@ export async function getInstagramDomInfo() {
   });
 
   const items = [...images, ...videos];
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    logFetcher("instagram", "dom:no-media");
+    return null;
+  }
 
   const title = scraped.title || "Instagram post";
   const handle = scraped.handle || "";
@@ -384,6 +430,7 @@ export async function getInstagramDomInfo() {
 
   if (items.length === 1 && images.length === 1) {
     const i = items[0];
+    logFetcher("instagram", "dom:image", { imageUrl: i.url });
     return {
       kind: "image",
       title,
@@ -397,6 +444,7 @@ export async function getInstagramDomInfo() {
       basename: i.basename,
     };
   }
+  logFetcher("instagram", "dom:gallery", { itemCount: items.length });
   return { kind: "gallery", title, handle, date, items };
 }
 

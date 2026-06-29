@@ -6,15 +6,8 @@
 import { describe, it, expect } from "vitest";
 import { looksLikeTweet } from "../extension/twitter.js";
 import { looksLikeRedditPost } from "../extension/reddit.js";
-import {
-  looksLikeInstagram,
-  isInstagramStoryUrl,
-} from "../extension/instagram.js";
-import {
-  looksLikeTikTok,
-  isTikTokVideoUrl,
-  isTikTokPhotoUrl,
-} from "../extension/tiktok.js";
+import { looksLikeInstagram, isInstagramStoryUrl } from "../extension/instagram.js";
+import { looksLikeTikTok, isTikTokVideoUrl, isTikTokPhotoUrl } from "../extension/tiktok.js";
 import {
   canonicalizeFacebookUrlForYtdlp,
   looksLikeFacebook,
@@ -45,7 +38,17 @@ describe("looksLikeRedditPost", () => {
   it("matches reddit permalinks", () => {
     expect(looksLikeRedditPost("https://www.reddit.com/r/pics/comments/abc123/title/")).toBe(true);
     expect(looksLikeRedditPost("https://old.reddit.com/r/pics/comments/abc123/title/")).toBe(true);
+    expect(looksLikeRedditPost("https://sh.reddit.com/r/pics/comments/abc123/title/")).toBe(true);
     expect(looksLikeRedditPost("https://reddit.com/r/videos/comments/xyz/")).toBe(true);
+  });
+  it("matches reddit direct media and short links", () => {
+    expect(looksLikeRedditPost("https://i.redd.it/abc123.jpg")).toBe(true);
+    expect(looksLikeRedditPost("https://preview.redd.it/abc123.png?width=960")).toBe(true);
+    expect(looksLikeRedditPost("https://v.redd.it/abc123")).toBe(true);
+    expect(looksLikeRedditPost("https://redd.it/abc123")).toBe(true);
+    expect(
+      looksLikeRedditPost("https://www.reddit.com/media?url=https%3A%2F%2Fi.redd.it%2Fx.jpg"),
+    ).toBe(true);
   });
   it("rejects subreddit / user / frontpage URLs", () => {
     expect(looksLikeRedditPost("https://www.reddit.com/r/pics/")).toBe(false);
@@ -103,7 +106,9 @@ describe("looksLikeTikTok", () => {
 
 describe("isTikTokVideoUrl", () => {
   it("matches /@user/video/<id> and /@user/photo/<id>", () => {
-    expect(isTikTokVideoUrl("https://www.tiktok.com/@charlidamelio/video/7394058290123456789")).toBe(true);
+    expect(
+      isTikTokVideoUrl("https://www.tiktok.com/@charlidamelio/video/7394058290123456789"),
+    ).toBe(true);
     expect(isTikTokVideoUrl("https://www.tiktok.com/@user/photo/123")).toBe(true);
   });
   it("rejects feed / homepage / profile URLs", () => {

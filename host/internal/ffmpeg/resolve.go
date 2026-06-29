@@ -6,6 +6,7 @@ package ffmpeg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,4 +75,21 @@ func ExtractAudio(ctx context.Context, bin, in, out string) error {
 		"-vn", "-c:a", "copy",
 		out,
 	)
+}
+
+func BuildExtractFrameArgs(timestamp float64, in, out string) []string {
+	return []string{
+		"-y", "-hide_banner", "-loglevel", "error",
+		"-ss", fmt.Sprintf("%.3f", timestamp),
+		"-i", in,
+		"-frames:v", "1",
+		out,
+	}
+}
+
+func ExtractFrame(ctx context.Context, bin string, timestamp float64, in, out string) error {
+	if timestamp < 0 {
+		return fmt.Errorf("timestamp must be non-negative")
+	}
+	return runproc.RunCaptureTail(ctx, bin, BuildExtractFrameArgs(timestamp, in, out)...)
 }

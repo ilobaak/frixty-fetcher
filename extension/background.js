@@ -11,6 +11,7 @@ import {
   topLevelSiteFor,
   siteCookieDomains,
   formatNetscapeCookie,
+  buildPersistentFetchSnapshot,
   buildTtRelayMessage,
 } from "./background-helpers.js";
 import { logFetcher } from "./fetcher-log.js";
@@ -30,6 +31,7 @@ let hostPort = null;
 const jobs = new Map(); // jobId -> { url, selection, status, progress, path, error }
 const popupPorts = new Set(); // all currently-open popup connections
 const pendingRequests = new Map(); // reqId -> { port, cacheKey? }
+const persistentFetches = new Map(); // reqId -> { url, status, response?, error? }
 // Maps TikTok grab-button-initiated jobs to the tab whose content
 // script should receive progress/done/error updates. Populated by
 // the tiktok:fetch-and-download handler; cleared on terminal events.
@@ -52,6 +54,17 @@ function ensureHostPort() {
       }
     }
     for (const [reqId, entry] of pendingRequests) {
+      const fetchState = persistentFetches.get(reqId);
+      if (fetchState?.status === "running") {
+        fetchState.status = "error";
+        fetchState.completedAt = Date.now();
+        fetchState.error = {
+          type: "error",
+          reqId,
+          code: "host_disconnected",
+          message: err?.message ?? "native host disconnected",
+        };
+      }
       try {
         entry.port.postMessage({
           type: "error",
@@ -152,9 +165,22 @@ async function onHostMessage(msg) {
     if (entry.cacheKey && isCacheable(stamped)) {
       await cachePut(entry.cacheKey, stamped);
     }
+    const fetchState = persistentFetches.get(msg.reqId);
+    if (fetchState) {
+      fetchState.completedAt = Date.now();
+      if (msg.type === "formats") {
+        fetchState.status = "done";
+        fetchState.response = stamped;
+        fetchState.error = null;
+      } else if (msg.type === "error") {
+        fetchState.status = "error";
+        fetchState.error = stamped;
+      }
+    }
     try {
-      entry.port.postMessage(stamped);
+      entry.port?.postMessage(stamped);
     } catch {}
+    if (fetchState) broadcast({ type: "fetchState", fetch: { id: msg.reqId, ...fetchState } });
     return;
   }
 
@@ -175,6 +201,63 @@ function broadcast(msg) {
     }
   }
   if (dead) for (const p of dead) popupPorts.delete(p);
+}
+
+async function startPersistentListFormats({ port = null, tabId = 0, url, useCookies = false }) {
+  for (const [id, f] of persistentFetches) {
+    if (f.url === url && f.useCookies === !!useCookies && f.status === "running") {
+      if (port) {
+        const pending = pendingRequests.get(id);
+        if (pending) pending.port = port;
+      }
+      return id;
+    }
+  }
+
+  const cacheKey = `formats:${useCookies ? "c" : "n"}:${url}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) {
+    if (port) {
+      try {
+        port.postMessage(cached);
+      } catch {}
+    }
+    const reqId = crypto.randomUUID();
+    persistentFetches.set(reqId, {
+      tabId,
+      url,
+      status: "done",
+      useCookies: !!useCookies,
+      startedAt: Date.now(),
+      completedAt: Date.now(),
+      response: cached,
+      error: null,
+    });
+    return reqId;
+  }
+
+  const reqId = crypto.randomUUID();
+  const fetchState = {
+    tabId,
+    url,
+    status: "running",
+    useCookies: !!useCookies,
+    startedAt: Date.now(),
+    response: null,
+    error: null,
+  };
+  persistentFetches.set(reqId, fetchState);
+  pendingRequests.set(reqId, { port, cacheKey, useCookies: !!useCookies, persistent: true });
+  const cookiesText = useCookies ? await readSiteCookiesText(url) : "";
+  logFetcher("sw", "host:listFormats", { url, useCookies: !!useCookies });
+  broadcast({ type: "fetchState", fetch: { id: reqId, ...fetchState } });
+  ensureHostPort().postMessage({
+    action: "listFormats",
+    reqId,
+    url,
+    cookiesText,
+  });
+  return reqId;
 }
 
 // relayTtJobMessage forwards a host-originated job event to the
@@ -488,7 +571,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const key = `frixty:auto-fetch:${tabId}`;
     chrome.storage.session
       .set({ [key]: { url, ts: Date.now(), currentTime } })
-      .then(() => {
+      .then(async () => {
+        try {
+          const { settings = {} } = await chrome.storage.local.get("settings");
+          const mode = settings.youtubeCookiesMode ?? "always";
+          await startPersistentListFormats({
+            tabId,
+            url,
+            useCookies: mode === "always",
+          });
+        } catch (err) {
+          dlog("yt:trigger-fetch prefetch err", err?.message || err);
+        }
         try {
           chrome.action.openPopup?.().catch(() => {});
         } catch {}
@@ -900,6 +994,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   // harmless until the next popup open, but a tab close is the
   // natural moment to reclaim the bytes.
   chrome.storage.session.remove(`fetched:${tabId}`).catch(() => {});
+  for (const [reqId, f] of persistentFetches) {
+    if (f.tabId === tabId) persistentFetches.delete(reqId);
+  }
 });
 
 // Track the "section" (first URL path segment) per tab so we only
@@ -938,10 +1035,13 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener((m) => handlePopupMessage(m, port));
   port.onDisconnect.addListener(() => {
     popupPorts.delete(port);
-    // Drop any pending requests owned by this popup so their eventual
-    // responses are discarded rather than mis-routed.
+    // Drop non-persistent pending requests owned by this popup. Persistent
+    // fetches keep running so a reopened popup can recover the result.
     for (const [reqId, entry] of pendingRequests) {
-      if (entry.port === port) pendingRequests.delete(reqId);
+      if (entry.port === port) {
+        if (entry.persistent) entry.port = null;
+        else pendingRequests.delete(reqId);
+      }
     }
   });
 });
@@ -952,6 +1052,7 @@ async function handlePopupMessage(m, port) {
       port.postMessage({
         type: "snapshot",
         jobs: Array.from(jobs.entries()).map(([id, j]) => ({ id, ...j })),
+        fetches: buildPersistentFetchSnapshot(persistentFetches),
       });
       break;
     case "listFormats": {
@@ -966,12 +1067,23 @@ async function handlePopupMessage(m, port) {
         break;
       }
       const reqId = crypto.randomUUID();
+      const fetchState = {
+        tabId: m.tabId ?? 0,
+        url: m.url,
+        status: "running",
+        useCookies: !!m.useCookies,
+        startedAt: Date.now(),
+        response: null,
+        error: null,
+      };
+      persistentFetches.set(reqId, fetchState);
       // useCookies travels with the pendingRequests entry so the
       // response gets stamped with the same value when it arrives —
       // see the relay branch above for why this matters.
-      pendingRequests.set(reqId, { port, cacheKey, useCookies: !!m.useCookies });
+      pendingRequests.set(reqId, { port, cacheKey, useCookies: !!m.useCookies, persistent: true });
       const cookiesText = m.useCookies ? await readSiteCookiesText(m.url) : "";
       logFetcher("sw", "host:listFormats", { url: m.url, useCookies: !!m.useCookies });
+      broadcast({ type: "fetchState", fetch: { id: reqId, ...fetchState } });
       ensureHostPort().postMessage({
         action: "listFormats",
         reqId,

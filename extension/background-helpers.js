@@ -121,6 +121,21 @@ export function formatNetscapeCookie(c) {
   return `${prefix}${domain}\t${includeSubdomains}\t${c.path || "/"}\t${secure}\t${expires}\t${c.name}\t${c.value}`;
 }
 
+export function buildPersistentFetchSnapshot(fetches) {
+  return Array.from(fetches.entries())
+    .map(([id, f]) => ({
+      id,
+      url: f.url,
+      status: f.status,
+      useCookies: !!f.useCookies,
+      startedAt: f.startedAt ?? 0,
+      ...(f.completedAt ? { completedAt: f.completedAt } : {}),
+      ...(f.response ? { response: f.response } : {}),
+      ...(f.error ? { error: f.error } : {}),
+    }))
+    .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+}
+
 // buildTtRelayMessage transforms a host-side TikTok job event into the
 // shape the per-tab content script expects (`tt:dl-progress` /
 // `tt:dl-done` / `tt:dl-error`). Returns null for any other message

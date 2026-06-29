@@ -32,10 +32,6 @@
   display: block;
   width: 18.75px;
   height: 18.75px;
-  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
-     reasoning. The new icon's visual mass sits in the lower-right
-     of its canvas. */
-  transform: translate(1px, 1px);
 }
 .ytdlp-tw-grab:hover {
   background: rgba(29, 155, 240, 0.1);

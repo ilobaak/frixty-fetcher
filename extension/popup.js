@@ -169,6 +169,7 @@ async function clearFetchedPicker() {
 
 let port;
 let tabUrl = "";
+let activeTabId = 0;
 let activeJobId = null;
 let currentFormats = null;
 // Set by init() when a per-tab auto-fetch flag is found in session
@@ -249,6 +250,7 @@ function connect() {
 async function init() {
   connect();
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  activeTabId = tab?.id ?? 0;
   tabUrl = tab?.url ?? "";
   dlog("init", { tabUrl });
 
@@ -296,7 +298,7 @@ async function init() {
   // stamps a per-tab flag in session storage. Check it here; if it
   // was set in the last 10s, consume it and kick off runFetchFlow
   // once the rest of init completes.
-  const autoFetchKey = `frixty:auto-fetch:${tab.id}`;
+  const autoFetchKey = `frixty:auto-fetch:${activeTabId}`;
   try {
     const stored = (await chrome.storage.session.get(autoFetchKey))[autoFetchKey];
     // Match stored.url against the current tabUrl before consuming. The
@@ -345,7 +347,7 @@ async function init() {
     // running a stale closure if the popup is reopened while the prior
     // listener hasn't been cleaned up yet.
     const onStorageChange = async (changes) => {
-      const myKey = `capture:list:${tab.id}`;
+      const myKey = `capture:list:${activeTabId}`;
       if (!changes[myKey]) return;
       const captures = await getCaptures();
       const captureItems = captures.length
@@ -401,7 +403,10 @@ function onMessage(msg) {
 
   switch (msg.type) {
     case "snapshot":
-      handleSnapshot(msg.jobs);
+      handleSnapshot(msg.jobs, msg.fetches);
+      break;
+    case "fetchState":
+      handleFetchState(msg.fetch);
       break;
     case "folderPicked":
       handleDestinationPicked(msg);
@@ -535,7 +540,7 @@ function activePickerStatusEl() {
   return null;
 }
 
-async function handleSnapshot(jobList) {
+async function handleSnapshot(jobList, fetchList = []) {
   const running = jobList.find((j) => j.url === tabUrl && j.status === "running");
   if (running) {
     activeJobId = running.id;
@@ -557,6 +562,31 @@ async function handleSnapshot(jobList) {
       error: finished.error,
       code: finished.code,
     };
+  }
+
+  const runningFetch = fetchList.find((f) => f.url === tabUrl && f.status === "running");
+  if (runningFetch) {
+    show("loading");
+    hide("fetch-prompt");
+    hide("picker");
+    hide("image-picker");
+    hide("gallery-picker");
+    hide("terminal");
+    return;
+  }
+
+  const completedFetch = fetchList.find((f) => f.url === tabUrl && f.status === "done" && f.response);
+  if (completedFetch) {
+    applyResponseUseCookies(completedFetch.response);
+    handleFormats(completedFetch.response);
+    return;
+  }
+
+  const failedFetch = fetchList.find((f) => f.url === tabUrl && f.status === "error" && f.error);
+  if (failedFetch) {
+    applyResponseUseCookies(failedFetch.error);
+    renderError(failedFetch.error);
+    return;
   }
 
   // Always expose the fetch button — users can re-scan the current
@@ -608,6 +638,24 @@ async function handleSnapshot(jobList) {
     requestAnimationFrame(() => {
       try { runFetchFlow(); } catch (err) { dlog("auto-fetch threw", err?.message || err); }
     });
+  }
+}
+
+function handleFetchState(fetchState) {
+  if (!fetchState || fetchState.url !== tabUrl) return;
+  if (fetchState.status === "running") {
+    show("loading");
+    hide("fetch-prompt");
+    return;
+  }
+  if (fetchState.status === "done" && fetchState.response) {
+    applyResponseUseCookies(fetchState.response);
+    handleFormats(fetchState.response);
+    return;
+  }
+  if (fetchState.status === "error" && fetchState.error) {
+    applyResponseUseCookies(fetchState.error);
+    dispatchError(fetchState.error);
   }
 }
 
@@ -902,7 +950,7 @@ function requestListFormats(forceCookies) {
     attempt: forceCookies === undefined ? "initial" : "retry-with-cookies",
   });
   logFetcher("popup", "list-formats:send", { url: tabUrl, useCookies });
-  port.postMessage({ cmd: "listFormats", url: tabUrl, useCookies });
+  port.postMessage({ cmd: "listFormats", url: tabUrl, useCookies, tabId: activeTabId });
 }
 
 // applyResponseUseCookies updates the module-level effectiveUseCookies

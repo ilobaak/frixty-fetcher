@@ -27,10 +27,6 @@ html[dark] .ytdlp-yt-grab,
   color: #fff;
 }
 .ytdlp-yt-grab svg {
-  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
-     reasoning. The new icon's visual mass sits in the lower-right
-     of its canvas. */
-  transform: translate(1px, 1px);
 }
 html[dark] .ytdlp-yt-grab:hover,
 :root[dark] .ytdlp-yt-grab:hover {

@@ -37,12 +37,6 @@
 .ytdlp-tt-grab svg {
   display: block;
   pointer-events: none;
-  /* Slight bottom-right nudge: the icon's visual mass (the magnifier
-     with the +) sits in the lower-right of its 32-unit canvas, so a
-     true geometric center looks empty in the upper-left. Translating
-     1px right + 1px down makes the magnifier cap appear closer to the
-     button's optical center. */
-  transform: translate(1px, 1px);
 }
 
 .ytdlp-tt-grab.is-pressing {

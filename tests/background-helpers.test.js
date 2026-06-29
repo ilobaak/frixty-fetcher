@@ -12,6 +12,7 @@ import {
   topLevelSiteFor,
   siteCookieDomains,
   formatNetscapeCookie,
+  buildPersistentFetchSnapshot,
   buildTtRelayMessage,
 } from "../extension/background-helpers.js";
 
@@ -188,6 +189,61 @@ describe("formatNetscapeCookie", () => {
     });
     // The 3rd field (after domain TAB include TAB) should be "/"
     expect(got.split("\t")[2]).toBe("/");
+  });
+});
+
+describe("buildPersistentFetchSnapshot", () => {
+  it("serializes active and completed fetch records for popup snapshots", () => {
+    const fetches = new Map([
+      [
+        "r1",
+        {
+          url: "https://www.youtube.com/watch?v=abc",
+          status: "running",
+          useCookies: true,
+          startedAt: 100,
+        },
+      ],
+      [
+        "r2",
+        {
+          url: "https://www.youtube.com/watch?v=done",
+          status: "done",
+          useCookies: false,
+          startedAt: 50,
+          completedAt: 120,
+          response: { type: "formats", title: "done" },
+        },
+      ],
+    ]);
+
+    expect(buildPersistentFetchSnapshot(fetches)).toEqual([
+      {
+        id: "r1",
+        url: "https://www.youtube.com/watch?v=abc",
+        status: "running",
+        useCookies: true,
+        startedAt: 100,
+      },
+      {
+        id: "r2",
+        url: "https://www.youtube.com/watch?v=done",
+        status: "done",
+        useCookies: false,
+        startedAt: 50,
+        completedAt: 120,
+        response: { type: "formats", title: "done" },
+      },
+    ]);
+  });
+
+  it("keeps newest fetch first for a URL when snapshots are searched", () => {
+    const fetches = new Map([
+      ["old", { url: "https://x.test/video", status: "done", startedAt: 10 }],
+      ["new", { url: "https://x.test/video", status: "running", startedAt: 20 }],
+    ]);
+
+    expect(buildPersistentFetchSnapshot(fetches).map((f) => f.id)).toEqual(["new", "old"]);
   });
 });
 

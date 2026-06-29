@@ -36,4 +36,16 @@ describe("icon assets", () => {
       expect(source).not.toContain("f-arrow");
     }
   });
+
+  it("does not offset injected fetch button icons", () => {
+    const styles = [
+      read("../extension/facebook-post-grab.css"),
+      read("../extension/twitter-post-grab.css"),
+      read("../extension/instagram-post-grab.css"),
+      read("../extension/youtube-post-grab.css"),
+      read("../extension/tiktok-post-grab.css"),
+    ].join("\n");
+
+    expect(styles).not.toContain("translate(1px, 1px)");
+  });
 });

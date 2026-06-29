@@ -22,10 +22,6 @@
 }
 .ytdlp-ig-grab svg {
   display: block;
-  /* Slight bottom-right nudge — see tiktok-post-grab.css for the
-     reasoning. The new icon's visual mass sits in the lower-right
-     of its canvas. */
-  transform: translate(1px, 1px);
 }
 /* Captured / error flash: solid background fill with white icon,
    matching TikTok's grab-button feedback pattern. */

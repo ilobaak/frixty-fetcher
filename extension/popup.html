@@ -118,10 +118,16 @@
             <span>Include Subtitles File (if available)</span>
           </label>
           <div class="youtube-image-actions" id="youtube-image-actions" hidden>
-            <button id="yt-save-thumb" type="button" class="secondary">Save thumbnail</button>
+            <button id="yt-save-thumb" type="button" class="secondary">Save Video Thumbnail</button>
             <button id="yt-save-current-frame" type="button" class="secondary">
               Save current frame
             </button>
+            <div class="frame-preview" id="yt-frame-preview" hidden>
+              <img id="yt-frame-preview-img" alt="" />
+              <div class="frame-preview-status" id="yt-frame-preview-status">
+                Preview unavailable
+              </div>
+            </div>
             <div class="timestamp-row">
               <input id="yt-frame-slider" type="range" min="0" max="0" step="1" value="0" />
               <input id="yt-frame-time" type="text" value="0:00" aria-label="Timestamp" />

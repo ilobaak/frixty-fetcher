@@ -43,7 +43,13 @@ import {
   isKnownHost,
 } from "./shared.js";
 import { friendlyError } from "./popup-errors.js";
-import { formatTimestamp, frameTimestampPrefill, validateTimestamp } from "./popup-helpers.js";
+import {
+  formatTimestamp,
+  framePreviewKey,
+  frameTimestampFilenameSuffix,
+  frameTimestampPrefill,
+  validateTimestamp,
+} from "./popup-helpers.js";
 import { logFetcher } from "./fetcher-log.js";
 
 // errorContext snapshots the popup-side state friendlyError /
@@ -172,6 +178,9 @@ let currentFormats = null;
 // manual click.
 let autoFetchPending = false;
 let autoFetchFrameSeconds = null;
+let framePreviewTimer = null;
+let framePreviewReqId = null;
+let framePreviewLastKey = "";
 let currentTitle = "";
 let currentUploader = "";
 let currentUploaderId = "";
@@ -401,6 +410,9 @@ function onMessage(msg) {
       applyResponseUseCookies(msg);
       handleFormats(msg);
       break;
+    case "framePreview":
+      handleFramePreview(msg);
+      break;
     case "progress":
       if (msg.jobId === activeJobId) dispatchProgress(msg);
       break;
@@ -434,6 +446,11 @@ function onMessage(msg) {
           });
           cookiesRetryTried = true;
           requestListFormats(true);
+          break;
+        }
+        if (msg.reqId && msg.reqId === framePreviewReqId) {
+          renderFramePreviewError("Preview unavailable");
+          framePreviewReqId = null;
           break;
         }
         dlog("host error (final)", { code: msg.code, message: msg.message });
@@ -1367,11 +1384,17 @@ function wireYouTubeImageActions() {
   }
   if (input) input.value = prefill.label;
   slider.oninput = () => {
-    input.value = formatTimestamp(Number(slider.value) || 0);
+    const seconds = Number(slider.value) || 0;
+    input.value = formatTimestamp(seconds);
+    scheduleFramePreview(seconds);
   };
   input.onchange = () => {
     const v = validateTimestamp(input.value, currentDuration);
-    if (v.ok) slider.value = String(Math.floor(v.seconds));
+    if (v.ok) {
+      slider.value = String(Math.floor(v.seconds));
+      input.value = formatTimestamp(v.seconds);
+      scheduleFramePreview(v.seconds);
+    }
   };
   el("yt-save-thumb").onclick = startThumbnailDownload;
   el("yt-save-current-frame").onclick = startCurrentFrameDownload;
@@ -1383,6 +1406,72 @@ function wireYouTubeImageActions() {
     }
     startFrameDownload(v.seconds);
   };
+  renderFramePreviewLoading();
+  scheduleFramePreview(prefill.seconds, { immediate: true });
+}
+
+function renderFramePreviewLoading() {
+  const box = el("yt-frame-preview");
+  const img = el("yt-frame-preview-img");
+  const status = el("yt-frame-preview-status");
+  if (!box || !img || !status) return;
+  box.hidden = false;
+  status.hidden = false;
+  status.textContent = "Loading frame preview...";
+  if (!img.src) img.removeAttribute("src");
+}
+
+function renderFramePreviewError(message) {
+  const box = el("yt-frame-preview");
+  const status = el("yt-frame-preview-status");
+  if (!box || !status) return;
+  box.hidden = false;
+  status.hidden = false;
+  status.textContent = message;
+}
+
+function scheduleFramePreview(seconds, { immediate = false } = {}) {
+  if (!tabUrl) return;
+  const v = validateTimestamp(String(seconds), currentDuration);
+  if (!v.ok) return;
+  const key = framePreviewKey(tabUrl, v.seconds);
+  if (key === framePreviewLastKey) return;
+  framePreviewLastKey = key;
+  if (framePreviewTimer) clearTimeout(framePreviewTimer);
+  renderFramePreviewLoading();
+  const run = () => requestFramePreview(v.seconds);
+  if (immediate) run();
+  else framePreviewTimer = setTimeout(run, 450);
+}
+
+function requestFramePreview(seconds) {
+  framePreviewTimer = null;
+  framePreviewReqId = crypto.randomUUID();
+  logFetcher("youtube", "frame-preview:send", { url: tabUrl, timestamp: seconds });
+  port.postMessage({
+    cmd: "extractFramePreview",
+    reqId: framePreviewReqId,
+    url: tabUrl,
+    timestamp: seconds,
+    useCookies: effectiveUseCookies,
+  });
+}
+
+function handleFramePreview(msg) {
+  if (!msg.reqId || msg.reqId !== framePreviewReqId) return;
+  framePreviewReqId = null;
+  const box = el("yt-frame-preview");
+  const img = el("yt-frame-preview-img");
+  const status = el("yt-frame-preview-status");
+  if (!box || !img || !status) return;
+  if (!msg.dataUrl) {
+    renderFramePreviewError("Preview unavailable");
+    return;
+  }
+  box.hidden = false;
+  img.src = msg.dataUrl;
+  status.hidden = true;
+  status.textContent = "";
 }
 
 function renderVideoCard(msg) {
@@ -1562,7 +1651,7 @@ function youtubeBaseName(kind, seconds = 0) {
   const handle = pickHandleText(currentUploaderId, currentUploader);
   const base = handle ? `${handle} - ${currentTitle}` : currentTitle;
   if (kind === "thumbnail") return buildSafeFilename(`${base} thumbnail`, "jpg");
-  return buildSafeFilename(`${base} frame ${formatTimestamp(seconds).replace(/:/g, "-")}`, "png");
+  return buildSafeFilename(`${base} frame ${frameTimestampFilenameSuffix(seconds)}`, "png");
 }
 
 function startThumbnailDownload() {

@@ -52,3 +52,13 @@ export function frameTimestampPrefill(seconds, duration = 0) {
     sliderValue: String(Math.floor(bounded)),
   };
 }
+
+export function frameTimestampFilenameSuffix(seconds) {
+  return formatTimestamp(seconds).replace(/:/g, "-");
+}
+
+export function framePreviewKey(url, seconds) {
+  const n = Number(seconds);
+  const safeSeconds = Number.isFinite(n) && n > 0 ? n : 0;
+  return `${url} @ ${safeSeconds.toFixed(3)}`;
+}

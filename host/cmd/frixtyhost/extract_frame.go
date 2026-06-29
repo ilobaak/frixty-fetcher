@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -36,6 +37,61 @@ func (s *server) handleExtractFrame(req request) {
 		return
 	}
 	go s.runExtractFrame(req, ytbin, ffbin)
+}
+
+func (s *server) handleExtractFramePreview(req request) {
+	if req.ReqID == "" {
+		s.sendRequestError(req.ReqID, "bad_request", "extractFramePreview requires reqId")
+		return
+	}
+	if req.Timestamp < 0 {
+		s.sendRequestError(req.ReqID, "bad_request", "extractFramePreview requires a non-negative timestamp")
+		return
+	}
+	ytbin := s.ytBin()
+	if ytbin == "" {
+		s.sendRequestError(req.ReqID, "ytdlp_missing", "yt-dlp binary not found")
+		return
+	}
+	ffbin, err := s.ffmpegBin()
+	if err != nil {
+		s.sendRequestError(req.ReqID, "ffmpeg_missing", err.Error())
+		return
+	}
+	dir, err := os.MkdirTemp("", "frixty-frame-preview-*")
+	if err != nil {
+		s.sendRequestError(req.ReqID, "write_failed", err.Error())
+		return
+	}
+	defer os.RemoveAll(dir)
+
+	destPath := filepath.Join(dir, "preview.jpg")
+	ctx, cancel := context.WithTimeout(context.Background(), framePreviewTimeout)
+	defer cancel()
+	cookiesFile, cleanup, err := writeCookiesTemp(req.CookiesText)
+	if err != nil {
+		s.sendRequestError(req.ReqID, "cookies_write_failed", err.Error())
+		return
+	}
+	defer cleanup()
+
+	finalPath, err := s.extractFramePreview(ctx, ytbin, ffbin, req.URL, cookiesFile, destPath, req.Timestamp)
+	if err != nil {
+		log.Printf("[frixty/host] extractFramePreview error url=%q timestamp=%.3f err=%v", req.URL, req.Timestamp, err)
+		s.sendRequestError(req.ReqID, "preview_failed", err.Error())
+		return
+	}
+	data, err := os.ReadFile(finalPath)
+	if err != nil {
+		s.sendRequestError(req.ReqID, "read_failed", err.Error())
+		return
+	}
+	s.send(withReqID(req, map[string]any{
+		"type":      "framePreview",
+		"mime":      "image/jpeg",
+		"dataUrl":   "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(data),
+		"timestamp": req.Timestamp,
+	}))
 }
 
 func (s *server) runExtractFrame(req request, ytbin, ffbin string) {
@@ -116,6 +172,22 @@ func (s *server) defaultExtractFrame(ctx context.Context, ytbin, ffbin, pageURL,
 	}
 	log.Printf("[frixty/host] extractFrame media resolved page=%q media=%q", pageURL, mediaURL)
 	if err := ffmpeg.ExtractFrame(ctx, ffbin, timestamp, mediaURL, destPath); err != nil {
+		os.Remove(destPath)
+		return "", err
+	}
+	return destPath, nil
+}
+
+func (s *server) defaultExtractFramePreview(ctx context.Context, ytbin, ffbin, pageURL, cookiesFile, destPath string, timestamp float64) (string, error) {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return "", fmt.Errorf("create parent dir: %w", err)
+	}
+	mediaURL, err := ytdlp.ResolveMediaURL(ctx, ytbin, pageURL, cookiesFile)
+	if err != nil {
+		return "", err
+	}
+	log.Printf("[frixty/host] extractFramePreview media resolved page=%q media=%q", pageURL, mediaURL)
+	if err := ffmpeg.ExtractFramePreview(ctx, ffbin, timestamp, mediaURL, destPath); err != nil {
 		os.Remove(destPath)
 		return "", err
 	}

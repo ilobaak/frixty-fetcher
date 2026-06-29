@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -71,3 +74,44 @@ func TestExtractFrameDispatchUsesStructuredErrorForMissingFfmpeg(t *testing.T) {
 type errTestFfmpegMissing struct{}
 
 func (errTestFfmpegMissing) Error() string { return "ffmpeg missing" }
+
+func TestExtractFramePreviewReturnsDataURL(t *testing.T) {
+	var out bytes.Buffer
+	s := newTestServer(&out)
+	s.resolveYt = func() string { return "yt-dlp" }
+	s.resolveFfmpeg = func() (string, error) { return "ffmpeg", nil }
+	s.extractFramePreview = func(ctx context.Context, ytbin, ffbin, pageURL, cookiesFile, destPath string, timestamp float64) (string, error) {
+		if timestamp != 12.5 {
+			t.Fatalf("timestamp = %v, want 12.5", timestamp)
+		}
+		if filepath.Ext(destPath) != ".jpg" {
+			t.Fatalf("destPath = %q, want jpg", destPath)
+		}
+		if err := os.WriteFile(destPath, []byte{0xff, 0xd8, 0xff, 0xd9}, 0o644); err != nil {
+			t.Fatalf("write preview: %v", err)
+		}
+		return destPath, nil
+	}
+
+	s.dispatch(request{
+		Action:    "extractFramePreview",
+		ReqID:     "preview-1",
+		URL:       "https://youtu.be/x",
+		Timestamp: 12.5,
+	})
+	s.inflight.Wait()
+
+	var resp map[string]any
+	if err := messaging.Read(&out, &resp); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if resp["type"] != "framePreview" || resp["reqId"] != "preview-1" {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+	if resp["mime"] != "image/jpeg" {
+		t.Fatalf("mime = %v, want image/jpeg", resp["mime"])
+	}
+	if got := resp["dataUrl"].(string); !strings.HasPrefix(got, "data:image/jpeg;base64,") {
+		t.Fatalf("dataUrl = %q", got)
+	}
+}

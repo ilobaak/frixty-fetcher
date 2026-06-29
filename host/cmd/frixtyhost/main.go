@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	HostVersion        = "1.0.0"
-	listFormatsTimeout = 30 * time.Second
-	selfUpdateTimeout  = 5 * time.Minute
+	HostVersion         = "1.0.0"
+	listFormatsTimeout  = 30 * time.Second
+	framePreviewTimeout = 45 * time.Second
+	selfUpdateTimeout   = 5 * time.Minute
 )
 
 type request struct {
@@ -96,8 +97,9 @@ type server struct {
 	// handlers can be tested without spawning yt-dlp/ffmpeg — tests
 	// substitute a deterministic fake. Production wires it to
 	// defaultFetchAndConvert at server construction time.
-	fetchAndConvert func(ctx context.Context, url, destPath, kind string) (string, error)
-	extractFrame    func(ctx context.Context, ytbin, ffbin, pageURL, cookiesFile, destPath string, timestamp float64) (string, error)
+	fetchAndConvert     func(ctx context.Context, url, destPath, kind string) (string, error)
+	extractFrame        func(ctx context.Context, ytbin, ffbin, pageURL, cookiesFile, destPath string, timestamp float64) (string, error)
+	extractFramePreview func(ctx context.Context, ytbin, ffbin, pageURL, cookiesFile, destPath string, timestamp float64) (string, error)
 	// inflight tracks short-lived dispatch goroutines (listFormats,
 	// pickFolder, selfUpdate). Tests Wait on it after dispatch; production
 	// can use it for graceful shutdown if we ever care. Long-running
@@ -156,6 +158,7 @@ func main() {
 	s := &server{out: out, jobs: tracker, updater: up, hostUpdater: hostUp}
 	s.fetchAndConvert = s.defaultFetchAndConvert
 	s.extractFrame = s.defaultExtractFrame
+	s.extractFramePreview = s.defaultExtractFramePreview
 
 	// Kick off the download if the managed yt-dlp binary is missing
 	// (first-run bootstrap) or the 12h throttle window has elapsed. Runs in
@@ -217,6 +220,8 @@ func (s *server) dispatch(req request) {
 		s.handleDownloadUrl(req)
 	case "extractFrame":
 		s.handleExtractFrame(req)
+	case "extractFramePreview":
+		s.goHandler(func() { s.handleExtractFramePreview(req) })
 	case "downloadGallery":
 		s.handleDownloadGallery(req)
 	case "revealInFileManager":

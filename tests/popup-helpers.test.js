@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  framePreviewKey,
+  frameTimestampFilenameSuffix,
   frameTimestampPrefill,
   formatTimestamp,
   parseTimestamp,
@@ -46,5 +48,15 @@ describe("timestamp helpers", () => {
       label: "0:00",
       sliderValue: "0",
     });
+  });
+
+  it("formats frame filename suffixes from timestamps", () => {
+    expect(frameTimestampFilenameSuffix(0)).toBe("0-00");
+    expect(frameTimestampFilenameSuffix(83.5)).toBe("1-23.500");
+    expect(frameTimestampFilenameSuffix(3723.25)).toBe("1-02-03.250");
+  });
+
+  it("keys frame previews by url and timestamp", () => {
+    expect(framePreviewKey("https://youtu.be/abc", 12.4)).toBe("https://youtu.be/abc @ 12.400");
   });
 });

@@ -1076,6 +1076,24 @@ async function handlePopupMessage(m, port) {
       });
       break;
     }
+    case "extractFramePreview": {
+      const reqId = m.reqId || crypto.randomUUID();
+      pendingRequests.set(reqId, { port });
+      const cookiesText = m.useCookies ? await readSiteCookiesText(m.url) : "";
+      logFetcher("sw", "host:extractFramePreview", {
+        url: m.url,
+        timestamp: m.timestamp ?? 0,
+        useCookies: !!m.useCookies,
+      });
+      ensureHostPort().postMessage({
+        action: "extractFramePreview",
+        reqId,
+        url: m.url,
+        timestamp: m.timestamp ?? 0,
+        cookiesText,
+      });
+      break;
+    }
     case "downloadGallery":
       jobs.set(m.jobId, {
         url: m.pageUrl ?? "gallery",

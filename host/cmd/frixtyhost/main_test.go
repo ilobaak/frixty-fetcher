@@ -26,6 +26,7 @@ func newTestServer(out io.Writer) *server {
 	// fake before dispatching.
 	s.fetchAndConvert = s.defaultFetchAndConvert
 	s.extractFrame = s.defaultExtractFrame
+	s.extractFramePreview = s.defaultExtractFramePreview
 	return s
 }
 

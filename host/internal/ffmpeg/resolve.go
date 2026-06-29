@@ -93,3 +93,22 @@ func ExtractFrame(ctx context.Context, bin string, timestamp float64, in, out st
 	}
 	return runproc.RunCaptureTail(ctx, bin, BuildExtractFrameArgs(timestamp, in, out)...)
 }
+
+func BuildExtractFramePreviewArgs(timestamp float64, in, out string) []string {
+	return []string{
+		"-y", "-hide_banner", "-loglevel", "error",
+		"-ss", fmt.Sprintf("%.3f", timestamp),
+		"-i", in,
+		"-frames:v", "1",
+		"-vf", "scale=640:-2",
+		"-q:v", "5",
+		out,
+	}
+}
+
+func ExtractFramePreview(ctx context.Context, bin string, timestamp float64, in, out string) error {
+	if timestamp < 0 {
+		return fmt.Errorf("timestamp must be non-negative")
+	}
+	return runproc.RunCaptureTail(ctx, bin, BuildExtractFramePreviewArgs(timestamp, in, out)...)
+}

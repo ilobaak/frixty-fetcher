@@ -13,6 +13,7 @@ import {
   formatNetscapeCookie,
   buildPersistentFetchSnapshot,
   buildTtRelayMessage,
+  buildYoutubeTriggerFetchPlan,
 } from "./background-helpers.js";
 import { logFetcher } from "./fetcher-log.js";
 
@@ -573,19 +574,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .set({ [key]: { url, ts: Date.now(), currentTime } })
       .then(async () => {
         try {
+          chrome.action.openPopup?.().catch(() => {});
+        } catch {}
+        try {
           const { settings = {} } = await chrome.storage.local.get("settings");
-          const mode = settings.youtubeCookiesMode ?? "always";
+          const plan = buildYoutubeTriggerFetchPlan(settings);
           await startPersistentListFormats({
             tabId,
             url,
-            useCookies: mode === "always",
+            useCookies: plan.useCookies,
           });
         } catch (err) {
           dlog("yt:trigger-fetch prefetch err", err?.message || err);
         }
-        try {
-          chrome.action.openPopup?.().catch(() => {});
-        } catch {}
         try {
           chrome.action.setBadgeText({ text: "▶", tabId });
           chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });

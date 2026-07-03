@@ -14,6 +14,7 @@ import {
   formatNetscapeCookie,
   buildPersistentFetchSnapshot,
   buildTtRelayMessage,
+  buildYoutubeTriggerFetchPlan,
 } from "../extension/background-helpers.js";
 
 describe("captureKey", () => {
@@ -313,5 +314,18 @@ describe("buildTtRelayMessage", () => {
     expect(buildTtRelayMessage(null)).toBeNull();
     expect(buildTtRelayMessage(undefined)).toBeNull();
     expect(buildTtRelayMessage({})).toBeNull();
+  });
+});
+
+describe("buildYoutubeTriggerFetchPlan", () => {
+  it("opens the popup before starting prefetch work", () => {
+    expect(buildYoutubeTriggerFetchPlan({ youtubeCookiesMode: "always" })).toEqual({
+      openPopupBeforePrefetch: true,
+      useCookies: true,
+    });
+  });
+
+  it("respects the never-use-cookies YouTube setting", () => {
+    expect(buildYoutubeTriggerFetchPlan({ youtubeCookiesMode: "never" }).useCookies).toBe(false);
   });
 });

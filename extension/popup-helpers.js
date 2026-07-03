@@ -62,3 +62,22 @@ export function framePreviewKey(url, seconds) {
   const safeSeconds = Number.isFinite(n) && n > 0 ? n : 0;
   return `${url} @ ${safeSeconds.toFixed(3)}`;
 }
+
+/**
+ * @param {{ savedSeconds?: unknown, fallbackSeconds?: unknown, duration?: number }} opts
+ */
+export function resolveFrameTimestampPrefill({ savedSeconds, fallbackSeconds, duration = 0 } = {}) {
+  if (savedSeconds !== null && savedSeconds !== undefined && savedSeconds !== "") {
+    const saved = validateTimestamp(String(savedSeconds), duration);
+    if (saved.ok) return frameTimestampPrefill(saved.seconds, duration);
+  }
+  return frameTimestampPrefill(fallbackSeconds, duration);
+}
+
+export function thumbnailPreviewState(thumbnailUrl, isYoutube, open = false) {
+  const src = String(thumbnailUrl || "").trim();
+  if (!isYoutube || !src) {
+    return { hidden: true, open: false, src: "" };
+  }
+  return { hidden: false, open: !!open, src };
+}

@@ -5,6 +5,8 @@ import {
   frameTimestampPrefill,
   formatTimestamp,
   parseTimestamp,
+  resolveFrameTimestampPrefill,
+  thumbnailPreviewState,
   validateTimestamp,
 } from "../extension/popup-helpers.js";
 
@@ -58,5 +60,36 @@ describe("timestamp helpers", () => {
 
   it("keys frame previews by url and timestamp", () => {
     expect(framePreviewKey("https://youtu.be/abc", 12.4)).toBe("https://youtu.be/abc @ 12.400");
+  });
+
+  it("prefers a valid saved frame timestamp over the auto-fetch timestamp", () => {
+    expect(resolveFrameTimestampPrefill({ savedSeconds: 12.5, fallbackSeconds: 42, duration: 120 })).toEqual({
+      seconds: 12.5,
+      label: "0:12.500",
+      sliderValue: "12",
+    });
+  });
+
+  it("falls back when the saved frame timestamp is invalid for the video", () => {
+    expect(resolveFrameTimestampPrefill({ savedSeconds: 150, fallbackSeconds: 42, duration: 120 })).toEqual({
+      seconds: 42,
+      label: "0:42",
+      sliderValue: "42",
+    });
+  });
+});
+
+describe("thumbnail preview helpers", () => {
+  it("renders a collapsed YouTube thumbnail preview when a thumbnail is available", () => {
+    expect(thumbnailPreviewState("https://i.ytimg.com/vi/abc/maxresdefault.jpg", true)).toEqual({
+      hidden: false,
+      open: false,
+      src: "https://i.ytimg.com/vi/abc/maxresdefault.jpg",
+    });
+  });
+
+  it("hides the thumbnail preview outside YouTube or without a thumbnail", () => {
+    expect(thumbnailPreviewState("", true).hidden).toBe(true);
+    expect(thumbnailPreviewState("https://example.test/thumb.jpg", false).hidden).toBe(true);
   });
 });

@@ -47,7 +47,8 @@ import {
   formatTimestamp,
   framePreviewKey,
   frameTimestampFilenameSuffix,
-  frameTimestampPrefill,
+  resolveFrameTimestampPrefill,
+  thumbnailPreviewState,
   validateTimestamp,
 } from "./popup-helpers.js";
 import { logFetcher } from "./fetcher-log.js";
@@ -164,6 +165,39 @@ async function clearFetchedPicker() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
     await chrome.storage.session.remove(`fetched:${tab.id}`);
+  } catch {}
+}
+
+function frameTimestampStorageKey(tabId = activeTabId) {
+  return `youtube:frame-timestamp:${tabId}`;
+}
+
+async function loadSavedFrameTimestamp() {
+  try {
+    if (!activeTabId || !tabUrl) return null;
+    const key = frameTimestampStorageKey();
+    const obj = await chrome.storage.session.get(key);
+    const entry = obj[key];
+    if (!entry || typeof entry !== "object") return null;
+    if (entry.url !== tabUrl) {
+      await chrome.storage.session.remove(key);
+      return null;
+    }
+    const seconds = Number(entry.seconds);
+    return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
+  } catch {
+    return null;
+  }
+}
+
+async function persistFrameTimestamp(seconds) {
+  try {
+    if (!activeTabId || !tabUrl) return;
+    const n = Number(seconds);
+    if (!Number.isFinite(n) || n < 0) return;
+    await chrome.storage.session.set({
+      [frameTimestampStorageKey()]: { url: tabUrl, seconds: n, at: Date.now() },
+    });
   } catch {}
 }
 
@@ -1382,7 +1416,7 @@ function handleFormats(msg) {
   populateQualityOptions(msg.items);
   wireKindSwitch();
   wireVideoFilenameMode();
-  wireYouTubeImageActions();
+  void wireYouTubeImageActions();
   initDownloadControls("#picker");
   el("download").addEventListener("click", startDownload);
   show("picker");
@@ -1408,7 +1442,7 @@ function wireVideoFilenameMode() {
   sel.onchange = refresh;
 }
 
-function wireYouTubeImageActions() {
+async function wireYouTubeImageActions() {
   const isYoutube = (() => {
     try {
       const host = new URL(tabUrl).hostname.toLowerCase();
@@ -1422,9 +1456,15 @@ function wireYouTubeImageActions() {
   if (!box) return;
   box.hidden = !isYoutube;
   if (!isYoutube) return;
+  renderThumbnailPreview(isYoutube);
   const slider = el("yt-frame-slider");
   const input = el("yt-frame-time");
-  const prefill = frameTimestampPrefill(autoFetchFrameSeconds ?? 0, currentDuration);
+  const savedSeconds = await loadSavedFrameTimestamp();
+  const prefill = resolveFrameTimestampPrefill({
+    savedSeconds,
+    fallbackSeconds: autoFetchFrameSeconds ?? 0,
+    duration: currentDuration,
+  });
   autoFetchFrameSeconds = null;
   if (slider) {
     slider.max = String(Math.max(0, Math.floor(currentDuration)));
@@ -1434,6 +1474,7 @@ function wireYouTubeImageActions() {
   slider.oninput = () => {
     const seconds = Number(slider.value) || 0;
     input.value = formatTimestamp(seconds);
+    void persistFrameTimestamp(seconds);
     scheduleFramePreview(seconds);
   };
   input.onchange = () => {
@@ -1441,6 +1482,7 @@ function wireYouTubeImageActions() {
     if (v.ok) {
       slider.value = String(Math.floor(v.seconds));
       input.value = formatTimestamp(v.seconds);
+      void persistFrameTimestamp(v.seconds);
       scheduleFramePreview(v.seconds);
     }
   };
@@ -1456,6 +1498,17 @@ function wireYouTubeImageActions() {
   };
   renderFramePreviewLoading();
   scheduleFramePreview(prefill.seconds, { immediate: true });
+}
+
+function renderThumbnailPreview(isYoutube) {
+  const details = el("yt-thumbnail-preview");
+  const img = el("yt-thumbnail-preview-img");
+  if (!details || !img) return;
+  const state = thumbnailPreviewState(currentThumbnail, isYoutube, details.open);
+  details.hidden = state.hidden;
+  details.open = state.open;
+  if (state.src) img.src = state.src;
+  else img.removeAttribute("src");
 }
 
 function renderFramePreviewLoading() {

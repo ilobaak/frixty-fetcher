@@ -165,3 +165,11 @@ export function buildTtRelayMessage(msg) {
   }
   return null;
 }
+
+export function buildYoutubeTriggerFetchPlan(settings = {}) {
+  const mode = settings?.youtubeCookiesMode ?? "always";
+  return {
+    openPopupBeforePrefetch: true,
+    useCookies: mode === "always",
+  };
+}

@@ -7,9 +7,16 @@ describe("popup markup", () => {
   it("groups YouTube image tools in one collapsed section", () => {
     expect(popupHtml).toContain('<details class="youtube-image-actions" id="youtube-image-actions" hidden>');
     expect(popupHtml).toContain("<summary>Video image tools</summary>");
+    expect(popupHtml).toContain('<section class="youtube-image-section" aria-labelledby="yt-thumbnail-section-title">');
+    expect(popupHtml).toContain('id="yt-thumbnail-section-title"');
+    expect(popupHtml).toContain("Thumbnail");
+    expect(popupHtml).toContain('<section class="youtube-image-section" aria-labelledby="yt-frame-section-title">');
+    expect(popupHtml).toContain('id="yt-frame-section-title"');
+    expect(popupHtml).toContain("Frames");
     expect(popupHtml).toContain('id="yt-thumbnail-preview"');
     expect(popupHtml).toContain('id="yt-frame-preview"');
     expect(popupHtml).toContain('id="yt-frame-slider"');
+    expect(popupHtml).toContain("Download video's current frame");
     expect(popupHtml).toContain('id="yt-save-timestamp-frame" type="button" class="primary"');
     expect(popupHtml).toContain("Download frame at timestamp");
   });

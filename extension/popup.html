@@ -120,32 +120,38 @@
           <details class="youtube-image-actions" id="youtube-image-actions" hidden>
             <summary>Video image tools</summary>
             <div class="youtube-image-actions-body">
-              <details class="thumbnail-preview" id="yt-thumbnail-preview" hidden>
-                <summary>Video thumbnail preview</summary>
-                <img id="yt-thumbnail-preview-img" alt="" />
-              </details>
-              <button id="yt-save-thumb" type="button" class="primary">
-                Download video thumbnail
-              </button>
-              <button id="yt-save-current-frame" type="button" class="primary">
-                Download current frame
-              </button>
-              <button id="yt-go-current-frame" type="button" class="secondary">
-                Go to current frame
-              </button>
-              <div class="frame-preview" id="yt-frame-preview" hidden>
-                <img id="yt-frame-preview-img" alt="" />
-                <div class="frame-preview-status" id="yt-frame-preview-status">
-                  Preview unavailable
+              <section class="youtube-image-section" aria-labelledby="yt-thumbnail-section-title">
+                <h2 id="yt-thumbnail-section-title">Thumbnail</h2>
+                <details class="thumbnail-preview" id="yt-thumbnail-preview" hidden>
+                  <summary>Video thumbnail preview</summary>
+                  <img id="yt-thumbnail-preview-img" alt="" />
+                </details>
+                <button id="yt-save-thumb" type="button" class="primary">
+                  Download video thumbnail
+                </button>
+              </section>
+              <section class="youtube-image-section" aria-labelledby="yt-frame-section-title">
+                <h2 id="yt-frame-section-title">Frames</h2>
+                <button id="yt-save-current-frame" type="button" class="primary">
+                  Download video's current frame
+                </button>
+                <button id="yt-go-current-frame" type="button" class="secondary">
+                  Go to current frame
+                </button>
+                <div class="frame-preview" id="yt-frame-preview" hidden>
+                  <img id="yt-frame-preview-img" alt="" />
+                  <div class="frame-preview-status" id="yt-frame-preview-status">
+                    Preview unavailable
+                  </div>
                 </div>
-              </div>
-              <div class="timestamp-row">
-                <input id="yt-frame-slider" type="range" min="0" max="0" step="1" value="0" />
-                <input id="yt-frame-time" type="text" value="0:00" aria-label="Timestamp" />
-              </div>
-              <button id="yt-save-timestamp-frame" type="button" class="primary">
-                Download frame at timestamp
-              </button>
+                <div class="timestamp-row">
+                  <input id="yt-frame-slider" type="range" min="0" max="0" step="1" value="0" />
+                  <input id="yt-frame-time" type="text" value="0:00" aria-label="Timestamp" />
+                </div>
+                <button id="yt-save-timestamp-frame" type="button" class="primary">
+                  Download frame at timestamp
+                </button>
+              </section>
             </div>
           </details>
         </div>

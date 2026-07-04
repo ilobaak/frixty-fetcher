@@ -275,10 +275,23 @@ select {
   font-weight: 400;
 }
 .youtube-image-actions {
+  margin-top: 2px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+}
+.youtube-image-actions > summary {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+}
+.youtube-image-actions-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 2px;
+  padding: 0 8px 8px;
 }
 .youtube-image-actions button {
   padding: 6px 8px;

@@ -47,6 +47,7 @@ import {
   formatTimestamp,
   framePreviewKey,
   frameTimestampFilenameSuffix,
+  frameTimestampSelection,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
   validateTimestamp,
@@ -1488,6 +1489,7 @@ async function wireYouTubeImageActions() {
   };
   el("yt-save-thumb").onclick = startThumbnailDownload;
   el("yt-save-current-frame").onclick = startCurrentFrameDownload;
+  el("yt-go-current-frame").onclick = goToCurrentFrame;
   el("yt-save-timestamp-frame").onclick = () => {
     const v = validateTimestamp(input.value, currentDuration);
     if (!v.ok) {
@@ -1498,6 +1500,31 @@ async function wireYouTubeImageActions() {
   };
   renderFramePreviewLoading();
   scheduleFramePreview(prefill.seconds, { immediate: true });
+}
+
+async function readCurrentVideoSeconds() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return 0;
+    const result = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.querySelector("video")?.currentTime ?? 0,
+    });
+    return Number(result?.[0]?.result) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function goToCurrentFrame() {
+  const seconds = await readCurrentVideoSeconds();
+  const selected = frameTimestampSelection(seconds, currentDuration);
+  const slider = el("yt-frame-slider");
+  const input = el("yt-frame-time");
+  if (slider) slider.value = selected.sliderValue;
+  if (input) input.value = selected.label;
+  void persistFrameTimestamp(selected.seconds);
+  scheduleFramePreview(selected.seconds, { immediate: true });
 }
 
 function renderThumbnailPreview(isYoutube) {
@@ -1786,17 +1813,7 @@ function startThumbnailDownload() {
 }
 
 async function startCurrentFrameDownload() {
-  let seconds = 0;
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      const result = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => document.querySelector("video")?.currentTime ?? 0,
-      });
-      seconds = Number(result?.[0]?.result) || 0;
-    }
-  } catch {}
+  const seconds = await readCurrentVideoSeconds();
   logFetcher("youtube", "current-frame:timestamp", { url: tabUrl, timestamp: seconds });
   startFrameDownload(seconds);
 }

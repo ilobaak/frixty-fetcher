@@ -53,6 +53,10 @@ export function frameTimestampPrefill(seconds, duration = 0) {
   };
 }
 
+export function frameTimestampSelection(seconds, duration = 0) {
+  return frameTimestampPrefill(seconds, duration);
+}
+
 export function frameTimestampFilenameSuffix(seconds) {
   return formatTimestamp(seconds).replace(/:/g, "-");
 }

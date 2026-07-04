@@ -4,6 +4,7 @@ import {
   frameTimestampFilenameSuffix,
   frameTimestampPrefill,
   formatTimestamp,
+  frameTimestampSelection,
   parseTimestamp,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
@@ -75,6 +76,19 @@ describe("timestamp helpers", () => {
       seconds: 42,
       label: "0:42",
       sliderValue: "42",
+    });
+  });
+
+  it("builds slider and input values for a current video frame", () => {
+    expect(frameTimestampSelection(83.5, 120)).toEqual({
+      seconds: 83.5,
+      label: "1:23.500",
+      sliderValue: "83",
+    });
+    expect(frameTimestampSelection(130, 120)).toEqual({
+      seconds: 120,
+      label: "2:00",
+      sliderValue: "120",
     });
   });
 });

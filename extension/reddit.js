@@ -286,6 +286,7 @@ function scrapeRedditDom() {
           ".media-preview",
           "gallery-carousel",
           "faceplate-carousel",
+          ".thing.link",
           "[data-testid='post-container']",
         ].join(", "),
       ),
@@ -307,14 +308,35 @@ function scrapeRedditDom() {
     document.querySelector("a.title")?.textContent?.trim() ||
     document.querySelector("h1")?.textContent?.trim() ||
     "reddit post";
-  const handle =
-    document.querySelector("shreddit-post")?.getAttribute("author") ||
-    document.querySelector(".tagline .author")?.textContent?.trim()?.replace(/^u\//, "") ||
-    document.querySelector('[slot="authorName"]')?.textContent?.trim()?.replace(/^u\//, "") ||
-    "";
   const seen = new Set();
   const items = [];
   const mediaRoots = findRedditMediaRoots();
+  const cleanAuthor = (value) => (value || "").trim().replace(/^u\//i, "");
+  const authorFromRoot = (root) => {
+    if (!root) return "";
+    const post = root.matches?.("shreddit-post")
+      ? root
+      : root.closest?.("shreddit-post") || root.querySelector?.("shreddit-post");
+    const fromPostAttr = cleanAuthor(post?.getAttribute?.("author") || "");
+    if (fromPostAttr) return fromPostAttr;
+    const oldPost = root.matches?.(".thing")
+      ? root
+      : root.closest?.(".thing") || root.querySelector?.(".thing");
+    const fromOldPostAttr = cleanAuthor(oldPost?.getAttribute?.("data-author") || "");
+    if (fromOldPostAttr) return fromOldPostAttr;
+    const scopedAuthor =
+      root.querySelector?.('[slot="authorName"]') ||
+      post?.querySelector?.('[slot="authorName"]') ||
+      root.querySelector?.(".tagline .author") ||
+      post?.querySelector?.(".tagline .author") ||
+      oldPost?.querySelector?.(".tagline .author");
+    return cleanAuthor(scopedAuthor?.textContent || "");
+  };
+  const handle =
+    mediaRoots.map(authorFromRoot).find(Boolean) ||
+    cleanAuthor(document.querySelector("shreddit-post")?.getAttribute("author") || "") ||
+    cleanAuthor(document.querySelector("shreddit-post [slot='authorName']")?.textContent || "") ||
+    cleanAuthor(document.querySelector(".tagline .author")?.textContent || "");
   const hasPostVideo = mediaRoots.some((root) => {
     return (
       root.querySelector("video") ||

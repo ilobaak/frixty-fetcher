@@ -166,6 +166,56 @@ describe("scrapeRedditDom", () => {
     });
   });
 
+  it("uses the post author instead of logged-in page chrome in DOM fallback", () => {
+    document.head.innerHTML = `
+      <meta property="og:title" content="The magnitude of the fires in Ontario Canada">
+    `;
+    document.body.innerHTML = `
+      <span slot="authorName">logged_in_user</span>
+      <shreddit-post post-title="The magnitude of the fires in Ontario Canada">
+        <a slot="authorName" href="/user/actual_poster/">u/actual_poster</a>
+        <div id="media-preview-1ux2n30">
+          <img src="https://preview.redd.it/fire.jpeg?width=960&height=540&auto=webp&s=main" width="960" height="540">
+        </div>
+      </shreddit-post>
+    `;
+
+    const info = __test.scrapeRedditDom();
+
+    expect(info).toMatchObject({
+      kind: "image",
+      handle: "actual_poster",
+      imageUrl: "https://preview.redd.it/fire.jpeg?width=960&height=540&auto=webp&s=main",
+    });
+  });
+
+  it("uses old Reddit post data-author instead of the logged-in userbar author", () => {
+    document.head.innerHTML = `
+      <meta property="og:title" content="The magnitude of the fires in Ontario Canada">
+    `;
+    document.body.innerHTML = `
+      <div class="tagline">
+        <a class="author" href="/user/logged_in_user">logged_in_user</a>
+      </div>
+      <div id="thing_t3_1ux2n30" class="thing link" data-author="defjam16" data-fullname="t3_1ux2n30">
+        <p class="tagline">
+          submitted by <a class="author" href="/user/defjam16">defjam16</a>
+        </p>
+        <div id="media-preview-1ux2n30" class="media-preview">
+          <img src="https://preview.redd.it/fire.jpeg?width=960&height=540&auto=webp&s=main" width="960" height="540">
+        </div>
+      </div>
+    `;
+
+    const info = __test.scrapeRedditDom();
+
+    expect(info).toMatchObject({
+      kind: "image",
+      handle: "defjam16",
+      imageUrl: "https://preview.redd.it/fire.jpeg?width=960&height=540&auto=webp&s=main",
+    });
+  });
+
   it("returns video for old reddit video media instead of preview images", () => {
     document.head.innerHTML = `
       <meta property="og:title" content="Video post">

@@ -1058,16 +1058,6 @@ async function getCaptures() {
   }
 }
 
-async function clearCaptures() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
-  try {
-    await bgRequest({ type: "capture:clear", tabId: tab.id });
-  } catch (err) {
-    dlog("clearCaptures failed", err.message);
-  }
-}
-
 // Persist items fetched via "Fetch media on this page" in the same
 // session storage key the arrow-button captures use, so they survive
 // popup close. Each stored record wraps the full item so buildGallery
@@ -2615,9 +2605,9 @@ async function startGalleryDownload() {
 // button) into N single-URL yt-dlp invocations, one per selected
 // permalink. The background's jobs map tracks each independently; the
 // popup shows the FIRST as its inline status, and subsequent jobs run
-// silently and finish on their own. Captures are cleared after firing
-// so the next popup open doesn't resurface posts the user already
-// acted on.
+// silently and finish on their own. Captures stay in the picker after
+// download so the same media can be saved again to another folder;
+// the user can remove items explicitly with the card X / toolbar.
 async function startCaptureListDownload(selected) {
   if (selected.length === 0) return;
   const handle = normalizeHandle(selected[0]?.item?.handle || "");
@@ -2725,10 +2715,6 @@ async function startCaptureListDownload(selected) {
   clearInlineStatus();
   disableActivePrimary();
   inlineRenderRunning({ percent: 0 });
-  // Clear the capture list so re-opening the popup doesn't resurface
-  // already-queued posts. Fire-and-forget — the popup doesn't need to
-  // block on this.
-  clearCaptures().catch(() => {});
 }
 
 // pickDirectMediaUrl: return the best direct-download URL for a

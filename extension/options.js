@@ -28,7 +28,7 @@ let current = {
   specificDestDir: "",
   lastDir: "",
   // Single filename setting shared across image and gallery pickers.
-  // Values: "uploader-title" | "title" | "sequential" | "original" | "setEach".
+  // Values: "uploader-title" | "title-uploader" | "title" | "sequential" | "original" | "setEach".
   // The image picker maps "sequential" to "uploader-title" since per-item
   // indexing is meaningless for a 1-of-1 download.
   filenameMode: "uploader-title",

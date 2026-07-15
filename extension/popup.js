@@ -230,8 +230,8 @@ const saveSettings = {
   specificDestDir: "",
   lastDir: "",
   // Single filename setting shared across image and gallery pickers.
-  // Values: "uploader-title" | "title" | "sequential" | "original" |
-  // "setEach". The image picker's per-item dropdown excludes
+  // Values: "uploader-title" | "title-uploader" | "title" |
+  // "sequential" | "original" | "setEach". The image picker's per-item dropdown excludes
   // "sequential" (no index for a 1-of-1 download) and falls back to
   // "uploader-title" if the saved default is "sequential". Gallery
   // pickers expose all five.
@@ -1979,6 +1979,8 @@ async function startImageDownload() {
     fileName = buildSafeFilename(customName, ext);
   } else if (filenameMode === "original") {
     fileName = sanitizeLooseFilename(galleryState.basename || buildSafeFilename(galleryState.title, ext));
+  } else if (filenameMode === "title-uploader" && handle) {
+    fileName = buildSafeFilename(`${galleryState.title} - ${handle}`, ext);
   } else if (filenameMode === "uploader-title" && handle) {
     fileName = buildSafeFilename(`${handle} - ${galleryState.title}`, ext);
   } else {
@@ -2036,7 +2038,7 @@ function showGalleryPicker(info) {
   maybeApplyPendingStatus();
   fetchGalleryItemSizes(info.items);
 
-  // Auto-start the download when the user has "Prompt each download"
+  // Auto-start the download when the user has "Individual downloads - prompt each"
   // UNchecked (saveSettings.downloadAutomatically === true). Gated on
   // a fresh-capture timestamp so popping the popup open to review
   // stale captures doesn't suddenly fire a download: if the newest
@@ -2089,7 +2091,7 @@ function initDownloadControls(_pickerSelector) {
   const folderMode = slot.querySelector(".dl-folder-mode");
   const folderCustom = slot.querySelector(".dl-folder-custom");
 
-  // "Prompt each download" inverts downloadAutomatically: when the
+  // "Individual downloads - prompt each" inverts downloadAutomatically: when the
   // user CHECKS it they're asking for a Save As dialog per file, so
   // downloadAutomatically becomes false and the destination / folder
   // controls are hidden (they don't apply when every file prompts).
@@ -2113,7 +2115,7 @@ function initDownloadControls(_pickerSelector) {
     port.postMessage({ cmd: "pickFolder", dialogTitle: "Choose download destination" });
   };
 
-  // "Download to new folder" + folder-name mode.
+  // "Download to a new folder in destination" + new-folder-name mode.
   folderToggle.checked = !!saveSettings.createFolder;
   folderBody.hidden = !folderToggle.checked;
   folderMode.value = saveSettings.folderMode;
@@ -2177,6 +2179,11 @@ function currentAlbumName(preferredHandle) {
   const handle = normalizeHandle(preferredHandle || "");
   // Combine only what's present — empty title with a handle should not
   // leave a trailing " - "; missing both drops the folder entirely.
+  if (mode === "title-uploader") {
+    if (handle && title) return buildSafeFolderName(`${title} - ${handle}`);
+    if (title) return buildSafeFolderName(title);
+    return buildSafeFolderName(handle);
+  }
   if (mode === "uploader-title") {
     if (handle && title) return buildSafeFolderName(`${handle} - ${title}`);
     if (handle) return buildSafeFolderName(handle);
@@ -2192,6 +2199,11 @@ function defaultAlbumName(mode) {
   const handleSrc = galleryState?.handle || currentUploaderId || currentUploader || "";
   const handle = normalizeHandle(handleSrc);
   const title = (galleryState?.title || currentTitle || "").toString().trim();
+  if (mode === "title-uploader") {
+    if (handle && title) return buildSafeFolderName(`${title} - ${handle}`);
+    if (title) return buildSafeFolderName(title);
+    return buildSafeFolderName(handle);
+  }
   if (mode === "uploader-title") {
     if (handle && title) return buildSafeFolderName(`${handle} - ${title}`);
     if (handle) return buildSafeFolderName(handle);
@@ -2364,6 +2376,7 @@ function renderGalleryItems(items) {
     // user sees "[Index]" even though no index shows up in the filename.
     const indexSuffix = total > 1 ? " [Index]" : "";
     fSel.add(new Option(`[@Poster] - [Title]${indexSuffix}`, "uploader-title"));
+    fSel.add(new Option(`[Title] - [@Poster]${indexSuffix}`, "title-uploader"));
     fSel.add(new Option(`[Title]${indexSuffix}`, "title"));
     fSel.add(new Option("Index", "sequential"));
     fSel.add(new Option("Original filename", "original"));
@@ -2748,6 +2761,8 @@ function pickDirectMediaUrl(item) {
 // buildCaptureDefaultBase: derive a filename stem for a capture item.
 // Precedence:
 //   "setEach" + typed → the user's explicit input
+//   title-uploader   → "title - @handle" (falling back as either part
+//                        is missing)
 //   otherwise         → "@handle - title" (falling back as either part
 //                        is missing).
 // Returns "" when neither handle nor title is known; the caller skips
@@ -2757,6 +2772,12 @@ function buildCaptureDefaultBase(item, typed, filenameMode) {
   if (filenameMode === "setEach" && typed) return typed;
   const handle = normalizeHandle(item.handle || "");
   const title = (item.capturedTitle || "").replace(/\s+/g, " ").trim();
+  if (filenameMode === "title-uploader") {
+    if (handle && title) return `${title} - ${handle}`.slice(0, 150);
+    if (title) return title.slice(0, 150);
+    if (handle) return handle;
+    return "";
+  }
   if (handle && title) return `${handle} - ${title}`.slice(0, 150);
   if (handle) return handle;
   if (title) return title.slice(0, 150);
@@ -2766,8 +2787,8 @@ function buildCaptureDefaultBase(item, typed, filenameMode) {
 // Save a text-only capture (e.g. a text tweet) to disk. Uses
 // chrome.downloads with a blob URL so the file hits disk without
 // going through the native host. Filename follows the same "setEach
-// wins, else uploader-title, else title" rules the media downloads
-// use, but always with a .txt extension.
+// wins, else a handle/title preset, else title" rules the media
+// downloads use, but always with a .txt extension.
 async function downloadTextCapture(item, filenameMode, customName = "") {
   const body = item.content || item.capturedTitle || item.basename || "";
   // Always include the source permalink as the first line for
@@ -2781,6 +2802,8 @@ async function downloadTextCapture(item, filenameMode, customName = "") {
     fileName = buildSafeFilename(typed, "txt");
   } else if (filenameMode === "original") {
     fileName = sanitizeLooseFilename((item.basename || "tweet") + ".txt");
+  } else if (filenameMode === "title-uploader" && handle) {
+    fileName = buildSafeFilename(`${item.basename || "tweet"} - ${handle}`, "txt");
   } else if (filenameMode === "uploader-title" && handle) {
     fileName = buildSafeFilename(`${handle} - ${item.basename || "tweet"}`, "txt");
   } else {
@@ -2821,6 +2844,8 @@ async function startGallerySingleItem(item, filenameMode, maxHeight, kind, custo
         ? item.basename.replace(/\.[^.]+$/, "") + ".m4a"
         : item.basename
     );
+  } else if (filenameMode === "title-uploader" && handle) {
+    fileName = buildSafeFilename(`${galleryState.title} - ${handle}`, ext);
   } else if (filenameMode === "uploader-title" && handle) {
     fileName = buildSafeFilename(`${handle} - ${galleryState.title}`, ext);
   } else {
@@ -2874,6 +2899,9 @@ async function persistSetting(key, value) {
 function guessDefaultName(title, kind, fnMode) {
   const ext = kind === "audio" ? "m4a" : "mp4";
   const handle = pickHandleText(currentUploaderId, currentUploader);
+  if (fnMode === "title-uploader" && handle) {
+    return buildSafeFilename(`${title} - ${handle}`, ext);
+  }
   if ((fnMode === "uploader-title" || fnMode === "set") && handle) {
     return buildSafeFilename(`${handle} - ${title}`, ext);
   }
@@ -2903,7 +2931,7 @@ function ytdlpEscapeTemplate(s) {
 // Pass errorContext() at every call site so the module stays pure.
 
 // buildGalleryItemName produces a per-item filename for the gallery
-// "title" and "uploader-title" modes. For sequential we return "" so
+// "title", "uploader-title", and "title-uploader" modes. For sequential we return "" so
 // the host falls back to numbered items; "original" uses the URL
 // basename; "setEach" reads the inline text input (plus the standard
 // index suffix when multiple items share the same typed name).
@@ -2920,9 +2948,11 @@ function buildGalleryItemName(item, idx, total, digits, filenameMode, handle, cu
     // or we'd end up with " 01 01" when the user leaves the default.
     return buildSafeFilename(typed, ext);
   }
-  if (filenameMode === "title" || filenameMode === "uploader-title") {
+  if (filenameMode === "title" || filenameMode === "uploader-title" || filenameMode === "title-uploader") {
     const prefix = (filenameMode === "uploader-title" && handle)
       ? `${handle} - ${galleryState.title}`
+      : (filenameMode === "title-uploader" && handle)
+        ? `${galleryState.title} - ${handle}`
       : galleryState.title;
     // Pass the index as a suffix so long titles get clipped without
     // eating the " NN" — the index is what guarantees uniqueness inside
@@ -2946,6 +2976,13 @@ function buildGalleryItemName(item, idx, total, digits, filenameMode, handle, cu
 // prepended by yt-dlp — if a site's uploader field lacks it, the file name
 // just lacks it too rather than mixing two different conventions.
 function videoFilenameTemplate(fnMode) {
+  if (fnMode === "title-uploader") {
+    const id = currentUploaderId || "";
+    if (id && /^\d+$/.test(id)) {
+      return "%(title)s - %(uploader,uploader_id|unknown)s.%(ext)s";
+    }
+    return "%(title)s - %(uploader_id,uploader|unknown)s.%(ext)s";
+  }
   if (fnMode !== "uploader-title") return "%(title)s.%(ext)s";
   // When the current listing returned a purely-numeric uploader_id
   // (Facebook), the yt-dlp template should prefer the human display

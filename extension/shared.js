@@ -194,8 +194,8 @@ export function isKnownHost(url) {
 // "sequential") or `imageFilenameMode` instead — we prefer gallery's.
 // The legacy "default" sentinel resolves to the modern default.
 //
-// Valid return values: "uploader-title" | "title" | "sequential" |
-// "original" | "setEach". The image picker maps "sequential" to
+// Valid return values: "uploader-title" | "title-uploader" | "title" |
+// "sequential" | "original" | "setEach". The image picker maps "sequential" to
 // "uploader-title" at the UI layer since per-item indexing has no
 // meaning for a 1-of-1 download.
 export function resolveFilenameMode(s) {

@@ -24,21 +24,21 @@
       </div>
     </div>
 
-    <!-- Shared "Prompt each download" + destination + new-folder
+    <!-- Shared individual-download + destination + new-folder
          controls. Sits just below the Fetch button so the section is
          always visible in a fixed spot regardless of which picker (if
          any) is on screen. Populated from the <template> below on
          popup init. -->
     <div class="download-controls-slot top-level"></div>
 
-    <!-- "Prompt each download" + destination + new-folder markup.
+    <!-- Individual-download + destination + new-folder markup.
          Cloned into the top-level .download-controls-slot on popup
          init so the same UI drives every picker. -->
     <template id="download-controls-tmpl">
       <div class="album-control download-controls">
         <label class="album-toggle">
           <input type="checkbox" class="dl-prompt-each" />
-          Prompt each download
+          Individual downloads - prompt each
         </label>
         <div class="dl-auto-body" hidden>
           <div class="destination-row">
@@ -48,13 +48,14 @@
           <div class="destination-path empty dl-path">Using default save location</div>
           <label class="album-toggle">
             <input type="checkbox" class="dl-create-folder" />
-            Download to new folder
+            Download to a new folder in destination
           </label>
           <div class="dl-folder-body" hidden>
             <label class="card-control">
-              <span>Folder name</span>
+              <span>New folder name</span>
               <select class="dl-folder-mode">
                 <option value="uploader-title">[@Poster] - [Title]</option>
+                <option value="title-uploader">[Title] - [@Poster]</option>
                 <option value="title">[Title]</option>
                 <option value="set">Set folder name</option>
               </select>
@@ -62,7 +63,7 @@
             <input
               type="text"
               class="album-custom dl-folder-custom"
-              placeholder="Folder name"
+              placeholder="New folder name"
               hidden
             />
           </div>
@@ -90,6 +91,7 @@
             <span>Filename</span>
             <select id="video-filename-mode">
               <option value="uploader-title" selected>[@Poster] - [Title]</option>
+              <option value="title-uploader">[Title] - [@Poster]</option>
               <option value="title">[Title]</option>
               <option value="set">User set</option>
             </select>
@@ -182,6 +184,7 @@
             <span>Filename</span>
             <select id="image-filename-mode">
               <option value="uploader-title" selected>[@Poster] - [Title]</option>
+              <option value="title-uploader">[Title] - [@Poster]</option>
               <option value="title">[Title]</option>
               <option value="original">Original filename</option>
               <option value="setEach">User set</option>

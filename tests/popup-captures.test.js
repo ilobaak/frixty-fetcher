@@ -24,3 +24,20 @@ describe("capture-list downloads", () => {
     expect(functionBody("startCaptureListDownload")).not.toContain("clearCaptures()");
   });
 });
+
+describe("popup naming modes", () => {
+  it("implements title-poster filenames across popup download paths", () => {
+    expect(functionBody("guessDefaultName")).toContain('fnMode === "title-uploader"');
+    expect(functionBody("videoFilenameTemplate")).toContain('fnMode === "title-uploader"');
+    expect(functionBody("buildGalleryItemName")).toContain('filenameMode === "title-uploader"');
+    expect(functionBody("buildCaptureDefaultBase")).toContain('filenameMode === "title-uploader"');
+    expect(functionBody("startImageDownload")).toContain('filenameMode === "title-uploader"');
+    expect(functionBody("downloadTextCapture")).toContain('filenameMode === "title-uploader"');
+    expect(functionBody("startGallerySingleItem")).toContain('filenameMode === "title-uploader"');
+  });
+
+  it("implements title-poster folder names", () => {
+    expect(functionBody("currentAlbumName")).toContain('mode === "title-uploader"');
+    expect(functionBody("defaultAlbumName")).toContain('mode === "title-uploader"');
+  });
+});

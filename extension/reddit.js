@@ -345,7 +345,19 @@ function scrapeRedditDom() {
       root.getAttribute?.("data-mpd-url")
     );
   });
-  const add = (src, width = 0, height = 0) => {
+  const mediaViewerImageUrl = (href) => {
+    if (!href) return "";
+    try {
+      const viewer = new URL(href, location.href);
+      if (viewer.pathname !== "/media") return "";
+      if (!/(^|\.)reddit\.com$/i.test(viewer.hostname) && !href.startsWith("/media")) return "";
+      const raw = viewer.searchParams.get("url");
+      return raw ? decodeURIComponent(raw) : "";
+    } catch {
+      return "";
+    }
+  };
+  const add = (src, width = 0, height = 0, thumbSrc = "") => {
     if (!src || seen.has(src)) return;
     let u;
     try {
@@ -372,18 +384,20 @@ function scrapeRedditDom() {
       ext,
       width: w,
       height: h,
-      thumbUrl: u.href,
+      thumbUrl: thumbSrc || u.href,
       mime: `image/${ext === "jpg" ? "jpeg" : ext}`,
       basename,
     });
   };
   for (const root of mediaRoots) {
     for (const img of root.querySelectorAll("img")) {
-      add(
-        img.currentSrc || img.src,
-        img.naturalWidth || img.width,
-        img.naturalHeight || img.height,
-      );
+      const renderedSrc = img.currentSrc || img.src;
+      const viewerSrc = mediaViewerImageUrl(img.closest("a[href]")?.getAttribute("href") || "");
+      if (viewerSrc) {
+        add(viewerSrc, 0, 0, renderedSrc);
+      } else {
+        add(renderedSrc, img.naturalWidth || img.width, img.naturalHeight || img.height);
+      }
     }
   }
   if (items.length === 0) {

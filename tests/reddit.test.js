@@ -189,6 +189,47 @@ describe("scrapeRedditDom", () => {
     });
   });
 
+  it("prefers media viewer full-size URLs over rendered gallery preview images", () => {
+    document.head.innerHTML = `
+      <meta property="og:title" content="Opened a random door in a parking garage and found this">
+    `;
+    document.body.innerHTML = `
+      <shreddit-post post-title="Opened a random door in a parking garage and found this" author="actual_poster">
+        <gallery-carousel>
+          <a href="/media?url=https%3A%2F%2Fpreview.redd.it%2Fj8z0usy6jc9h1.jpg%3Fwidth%3D4032%26format%3Dpjpg%26auto%3Dwebp%26s%3Dfull">
+            <img
+              src="https://preview.redd.it/j8z0usy6jc9h1.jpg?width=640&format=pjpg&auto=webp&s=small"
+              width="640"
+              height="480">
+          </a>
+          <a href="https://www.reddit.com/media?url=https%3A%2F%2Fpreview.redd.it%2Fsecond.jpg%3Fwidth%3D3024%26format%3Dpjpg%26auto%3Dwebp%26s%3Dfull2">
+            <img
+              src="https://preview.redd.it/second.jpg?width=640&format=pjpg&auto=webp&s=small2"
+              width="640"
+              height="480">
+          </a>
+        </gallery-carousel>
+      </shreddit-post>
+    `;
+
+    const info = __test.scrapeRedditDom();
+
+    expect(info).toMatchObject({
+      kind: "gallery",
+      handle: "actual_poster",
+      items: [
+        {
+          url: "https://preview.redd.it/j8z0usy6jc9h1.jpg?width=4032&format=pjpg&auto=webp&s=full",
+          width: 4032,
+        },
+        {
+          url: "https://preview.redd.it/second.jpg?width=3024&format=pjpg&auto=webp&s=full2",
+          width: 3024,
+        },
+      ],
+    });
+  });
+
   it("uses old Reddit post data-author instead of the logged-in userbar author", () => {
     document.head.innerHTML = `
       <meta property="og:title" content="The magnitude of the fires in Ontario Canada">

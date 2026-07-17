@@ -29,11 +29,13 @@ func (s *server) promptSavePath(req request, defaultTitle string) (string, error
 	if req.StartDir != "" {
 		if expanded, err := expandHome(req.StartDir); err == nil {
 			if req.DefaultFileName != "" {
-				defaultPath = filepath.Join(expanded, req.DefaultFileName)
+				defaultPath = filepath.Join(expanded, safeDownloadFilename(req.DefaultFileName, ""))
 			} else {
 				defaultPath = expanded
 			}
 		}
+	} else if req.DefaultFileName != "" {
+		defaultPath = safeDownloadFilename(req.DefaultFileName, "")
 	}
 	if defaultPath != "" {
 		opts = append(opts, zenity.Filename(defaultPath))
@@ -70,6 +72,7 @@ func (s *server) promptGalleryItemPath(req request, item galleryItem, idx, total
 		}
 		defaultName = fmt.Sprintf("%0*d.%s", digits, idx+1, ext)
 	}
+	defaultName = safeDownloadFilename(defaultName, item.Ext)
 
 	var startDir string
 	if prevPath != "" {

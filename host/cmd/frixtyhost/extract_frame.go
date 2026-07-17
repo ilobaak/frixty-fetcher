@@ -125,7 +125,7 @@ func (s *server) runExtractFrame(req request, ytbin, ffbin string) {
 				return
 			}
 		}
-		destPath = filepath.Join(dir, req.DefaultFileName)
+		destPath = filepath.Join(dir, safeDownloadFilename(req.DefaultFileName, "png"))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

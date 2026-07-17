@@ -63,7 +63,7 @@ func (s *server) runDownloadUrl(req request) {
 				return
 			}
 		}
-		destPath = filepath.Join(dir, req.DefaultFileName)
+		destPath = filepath.Join(dir, safeDownloadFilename(req.DefaultFileName, ""))
 	}
 
 	// Per-job cancellable context so the popup's Cancel button

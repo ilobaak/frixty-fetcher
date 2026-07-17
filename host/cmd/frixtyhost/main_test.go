@@ -330,6 +330,39 @@ func TestJoinAlbumDirRejectsNul(t *testing.T) {
 	}
 }
 
+func TestJoinAlbumDirClipsLongWindowsPathComponent(t *testing.T) {
+	base := t.TempDir()
+	long := strings.Repeat("x", 400)
+
+	got, err := joinAlbumDir(base, long)
+	if err != nil {
+		t.Fatalf("joinAlbumDir: %v", err)
+	}
+	name := filepath.Base(got)
+	if len(name) > maxPathComponentChars {
+		t.Fatalf("album component length = %d, want <= %d", len(name), maxPathComponentChars)
+	}
+	if !strings.HasPrefix(name, strings.Repeat("x", 20)) {
+		t.Fatalf("unexpected clipped component %q", name)
+	}
+}
+
+func TestSafeDownloadFilenameClipsLongDefaultName(t *testing.T) {
+	long := strings.Repeat("ricky berwick long title ", 30) + ".mp4"
+
+	got := safeDownloadFilename(long, "jpg")
+
+	if len(got) > maxPathComponentChars {
+		t.Fatalf("filename length = %d, want <= %d", len(got), maxPathComponentChars)
+	}
+	if filepath.Ext(got) != ".mp4" {
+		t.Fatalf("extension = %q, want .mp4 in %q", filepath.Ext(got), got)
+	}
+	if strings.HasSuffix(strings.TrimSuffix(got, ".mp4"), " ") {
+		t.Fatalf("stem should not end with space: %q", got)
+	}
+}
+
 // TestJoinAlbumDirRejectsSiblingPrefix: "/home/x-evil" should NOT be
 // accepted as a child of "/home/x" just because of string-prefix shape.
 func TestJoinAlbumDirRejectsSiblingPrefix(t *testing.T) {

@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const maxPathComponentChars = 150
+
 // joinAlbumDir joins baseDir + user-supplied albumName and guarantees the
 // result stays underneath baseDir. Defends against path traversal via
 // ../ sequences, absolute paths (Windows drive letters or POSIX roots),
@@ -41,7 +43,113 @@ func joinAlbumDir(baseDir, albumName string) (string, error) {
 	if !strings.HasPrefix(joined+sep, cleanBase+sep) {
 		return "", fmt.Errorf("albumName %q escapes destDir", albumName)
 	}
-	return joined, nil
+	rel, err := filepath.Rel(cleanBase, joined)
+	if err != nil {
+		return "", fmt.Errorf("resolve albumName: %w", err)
+	}
+	clipped := cleanBase
+	for _, part := range splitPathComponents(rel) {
+		part = safePathComponent(part, "", false)
+		if part == "" {
+			continue
+		}
+		clipped = filepath.Join(clipped, part)
+	}
+	return clipped, nil
+}
+
+func splitPathComponents(path string) []string {
+	return strings.FieldsFunc(path, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
+}
+
+func safeDownloadFilename(name, fallbackExt string) string {
+	fallbackExt = strings.TrimPrefix(fallbackExt, ".")
+	if fallbackExt != "" {
+		fallbackExt = "." + fallbackExt
+	}
+	return safePathComponent(name, fallbackExt, true)
+}
+
+func safePathComponent(name, fallbackExt string, preserveExt bool) string {
+	safe := strings.Map(func(r rune) rune {
+		switch {
+		case r == 0 || r < 32 || r == 127:
+			return -1
+		case strings.ContainsRune(`\/:*?"<>|`, r):
+			return '_'
+		default:
+			return r
+		}
+	}, strings.TrimSpace(name))
+	safe = strings.Join(strings.Fields(safe), " ")
+	safe = strings.TrimRight(safe, ". ")
+	if safe == "" {
+		safe = "file"
+	}
+
+	ext := ""
+	stem := safe
+	if preserveExt {
+		ext = filepath.Ext(safe)
+		if ext == "" {
+			ext = fallbackExt
+		}
+		if ext != "" {
+			stem = strings.TrimSuffix(safe, filepath.Ext(safe))
+		}
+	}
+	if ext != "" && runeLen(ext) >= maxPathComponentChars {
+		ext = ""
+	}
+	budget := maxPathComponentChars - runeLen(ext)
+	if budget < 1 {
+		budget = maxPathComponentChars
+	}
+	if runeLen(stem) > budget {
+		stem = strings.TrimRight(clipRunes(stem, budget), ". ")
+	}
+	if stem == "" {
+		stem = "file"
+	}
+	out := stem + ext
+	if isWindowsReservedName(out) {
+		out = "_" + out
+	}
+	if runeLen(out) > maxPathComponentChars {
+		if ext != "" && runeLen(ext) < maxPathComponentChars {
+			stemBudget := maxPathComponentChars - runeLen(ext)
+			out = strings.TrimRight(clipRunes(strings.TrimSuffix(out, ext), stemBudget), ". ") + ext
+		} else {
+			out = strings.TrimRight(clipRunes(out, maxPathComponentChars), ". ")
+		}
+	}
+	return out
+}
+
+func runeLen(s string) int {
+	return len([]rune(s))
+}
+
+func clipRunes(s string, max int) string {
+	rs := []rune(s)
+	if len(rs) <= max {
+		return s
+	}
+	return string(rs[:max])
+}
+
+func isWindowsReservedName(name string) bool {
+	base := strings.TrimSuffix(name, filepath.Ext(name))
+	switch strings.ToUpper(base) {
+	case "CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
+		return true
+	default:
+		return false
+	}
 }
 
 // uniquePath appends "-2", "-3", ... to the stem if the target path is

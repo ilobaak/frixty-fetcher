@@ -23,6 +23,19 @@ describe("capture-list downloads", () => {
   it("keeps captured media available after starting a download", () => {
     expect(functionBody("startCaptureListDownload")).not.toContain("clearCaptures()");
   });
+
+  it("clears active job before re-enabling selected gallery downloads", () => {
+    for (const name of ["inlineRenderDone", "inlineRenderError"]) {
+      const body = functionBody(name);
+      const clearIdx = body.indexOf("activeJobId = null");
+      const reEnableIdx = body.indexOf("reEnablePrimary()");
+      expect(clearIdx, `${name} should clear activeJobId`).toBeGreaterThanOrEqual(0);
+      expect(reEnableIdx, `${name} should re-enable primary controls`).toBeGreaterThanOrEqual(0);
+      expect(clearIdx, `${name} must clear activeJobId before reEnablePrimary`).toBeLessThan(
+        reEnableIdx,
+      );
+    }
+  });
 });
 
 describe("popup naming modes", () => {

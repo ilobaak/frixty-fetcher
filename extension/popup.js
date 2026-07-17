@@ -3102,10 +3102,10 @@ function inlineRenderDone(msg) {
   }
   const closeBtn = e.querySelector(".close");
   if (closeBtn) closeBtn.onclick = () => { e.hidden = true; e.innerHTML = ""; };
-  reEnablePrimary();
   // The job finished; clear activeJobId so late progress events from a new
   // download don't get confused with the old one's tail.
   activeJobId = null;
+  reEnablePrimary();
 }
 
 function inlineRenderError(msg) {
@@ -3121,8 +3121,8 @@ function inlineRenderError(msg) {
   `;
   const closeBtn = e.querySelector(".close");
   if (closeBtn) closeBtn.onclick = () => { e.hidden = true; e.innerHTML = ""; };
-  reEnablePrimary();
   activeJobId = null;
+  reEnablePrimary();
 }
 
 function clearInlineStatus() {

@@ -4,7 +4,7 @@
 // that drive URL rewriting and variant selection.
 
 import { describe, it, expect } from "vitest";
-import { withTwitterSize, pickVariantUrl } from "../extension/twitter.js";
+import { withTwitterSize, pickVariantUrl, twitterDomInfoFromScrape } from "../extension/twitter.js";
 
 describe("withTwitterSize", () => {
   it("sets ?name=orig on a clean pbs.twimg.com URL", () => {
@@ -12,10 +12,7 @@ describe("withTwitterSize", () => {
     expect(out).toBe("https://pbs.twimg.com/media/abc.jpg?name=orig");
   });
   it("replaces an existing name= parameter rather than duplicating", () => {
-    const out = withTwitterSize(
-      "https://pbs.twimg.com/media/abc.jpg?name=small",
-      "orig",
-    );
+    const out = withTwitterSize("https://pbs.twimg.com/media/abc.jpg?name=small", "orig");
     expect(out).toBe("https://pbs.twimg.com/media/abc.jpg?name=orig");
   });
   it("preserves unrelated query parameters", () => {
@@ -29,10 +26,7 @@ describe("withTwitterSize", () => {
     expect(out.includes("name=small")).toBe(false);
   });
   it("accepts the small size label too (used for thumbnails)", () => {
-    const out = withTwitterSize(
-      "https://pbs.twimg.com/media/abc.jpg?name=orig",
-      "small",
-    );
+    const out = withTwitterSize("https://pbs.twimg.com/media/abc.jpg?name=orig", "small");
     expect(out.includes("name=small")).toBe(true);
   });
   it("returns the input unchanged on an unparseable URL", () => {
@@ -80,12 +74,81 @@ describe("pickVariantUrl", () => {
   it("treats a missing variant.height as 0 (always under any positive cap)", () => {
     const item = {
       url: "fallback",
-      variants: [
-        { url: "no-height-1.mp4" },
-        { height: 480, url: "480.mp4" },
-      ],
+      variants: [{ url: "no-height-1.mp4" }, { height: 480, url: "480.mp4" }],
     };
     // First variant has height 0 ≤ 480, so it wins by DOM order.
     expect(pickVariantUrl(item, 480)).toBe("no-height-1.mp4");
+  });
+});
+
+describe("twitterDomInfoFromScrape", () => {
+  it("preserves the username handle for single-image DOM fallback downloads", () => {
+    const info = twitterDomInfoFromScrape({
+      text: "Flexible Natalie posted a media tweet",
+      images: [
+        {
+          src: "https://pbs.twimg.com/media/example.jpg?format=jpg&name=small",
+          width: 1200,
+          height: 900,
+          handle: "flexiblenatalie",
+        },
+      ],
+      videos: [],
+    });
+
+    expect(info).toMatchObject({
+      kind: "image",
+      title: "Flexible Natalie posted a media tweet",
+      handle: "flexiblenatalie",
+    });
+  });
+
+  it("sets a gallery handle only when every DOM media item belongs to the same username", () => {
+    const info = twitterDomInfoFromScrape({
+      text: "mixed media",
+      images: [
+        {
+          src: "https://pbs.twimg.com/media/photo.jpg?format=jpg&name=small",
+          width: 800,
+          height: 600,
+          handle: "flexiblenatalie",
+        },
+      ],
+      videos: [
+        {
+          src: "https://video.twimg.com/ext_tw_video/1/pu/vid/1280x720/video.mp4",
+          posterUrl: "https://pbs.twimg.com/ext_tw_video_thumb/poster.jpg",
+          handle: "flexiblenatalie",
+        },
+      ],
+    });
+
+    expect(info.kind).toBe("gallery");
+    expect(info.handle).toBe("flexiblenatalie");
+    expect(info.items.every((item) => item.handle === "flexiblenatalie")).toBe(true);
+  });
+
+  it("does not invent a gallery handle when DOM media usernames disagree", () => {
+    const info = twitterDomInfoFromScrape({
+      text: "ambiguous media",
+      images: [
+        {
+          src: "https://pbs.twimg.com/media/photo-a.jpg?format=jpg&name=small",
+          width: 800,
+          height: 600,
+          handle: "firstuser",
+        },
+        {
+          src: "https://pbs.twimg.com/media/photo-b.jpg?format=jpg&name=small",
+          width: 800,
+          height: 600,
+          handle: "seconduser",
+        },
+      ],
+      videos: [],
+    });
+
+    expect(info.kind).toBe("gallery");
+    expect(info.handle).toBe("");
   });
 });

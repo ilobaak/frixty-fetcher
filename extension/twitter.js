@@ -252,6 +252,16 @@ export async function getTwitterDomInfo() {
     videoCount: scraped?.videos?.length || 0,
   });
 
+  const info = twitterDomInfoFromScrape(scraped);
+  if (!info) {
+    logFetcher("twitter", "dom:no-media");
+    return null;
+  }
+  logFetcher("twitter", "dom:result", { itemCount: info.items?.length || 1 });
+  return info;
+}
+
+export function twitterDomInfoFromScrape(scraped) {
   const items = [];
   const seen = new Set();
 
@@ -318,20 +328,20 @@ export async function getTwitterDomInfo() {
     });
   }
 
-  if (items.length === 0) {
-    logFetcher("twitter", "dom:no-media");
-    return null;
-  }
-  logFetcher("twitter", "dom:result", { itemCount: items.length });
+  if (items.length === 0) return null;
 
   const rawText = (scraped?.text ?? "").replace(/\s+/g, " ").trim();
   const title = rawText.length > 80 ? rawText.slice(0, 80) + "…" : rawText || "Tweet";
+
+  const handles = [...new Set(items.map((i) => i.handle).filter(Boolean))];
+  const handle = handles.length === 1 ? handles[0] : "";
 
   if (items.length === 1 && items[0].mime?.startsWith("image/")) {
     const i = items[0];
     return {
       kind: "image",
       title,
+      handle: i.handle || "",
       imageUrl: i.url,
       thumbUrl: i.thumbUrl || i.url,
       width: i.width,
@@ -340,7 +350,7 @@ export async function getTwitterDomInfo() {
       basename: i.basename,
     };
   }
-  return { kind: "gallery", title, items };
+  return { kind: "gallery", title, handle, items };
 }
 
 // parseTwitterVideoUrl pulls the stable video ID (for grouping variants

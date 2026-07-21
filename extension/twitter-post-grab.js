@@ -240,16 +240,17 @@
   function extractAuthor(tweet) {
     // The OUTER User-Name block comes first in DOM order. Quoted
     // tweet embeds get their own nested User-Name block. Pick the
-    // first that isn't inside a quote.
+    // first that isn't inside a quote, and prefer the username over
+    // the display name so @Poster filenames stay stable.
     const headers = tweet.querySelectorAll('[data-testid="User-Name"]');
     for (const h of headers) {
       if (isInsideQuote(h, tweet)) continue;
-      const nameSpan = h.querySelector("span");
-      const name = nameSpan?.textContent?.trim();
-      if (name && !name.startsWith("@")) return name;
-      const handle = h.querySelector('a[role="link"]');
-      const text = handle?.textContent?.trim();
-      if (text) return text;
+      const textMatch = (h.textContent || "").match(/@([A-Za-z0-9_]+)/);
+      if (textMatch) return textMatch[1];
+      const handle = h.querySelector('a[role="link"][href^="/"], a[href^="/"]');
+      const href = handle?.getAttribute("href") || "";
+      const hrefMatch = href.match(/^\/([A-Za-z0-9_]{1,15})(?:[/?#]|$)/);
+      if (hrefMatch) return hrefMatch[1];
     }
     return "";
   }

@@ -15,6 +15,13 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain("[Title] - [@Poster]");
   });
 
+  it("offers gallery media-type selection controls", () => {
+    expect(popupHtml).toContain('id="select-videos"');
+    expect(popupHtml).toContain("Select Videos");
+    expect(popupHtml).toContain('id="select-images"');
+    expect(popupHtml).toContain("Select Images");
+  });
+
   it("groups YouTube image tools in one collapsed section", () => {
     expect(popupHtml).toContain('<details class="youtube-image-actions" id="youtube-image-actions" hidden>');
     expect(popupHtml).toContain("<summary>Video image tools</summary>");

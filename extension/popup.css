@@ -531,6 +531,7 @@ select {
 }
 .select-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -546,7 +547,7 @@ select {
   background: #f3c7c3;
 }
 .select-toolbar button {
-  flex: 1;
+  flex: 1 1 96px;
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 500;

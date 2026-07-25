@@ -24,6 +24,28 @@ describe("capture-list downloads", () => {
     expect(functionBody("startCaptureListDownload")).not.toContain("clearCaptures()");
   });
 
+  it("routes direct captured videos through downloadUrl", () => {
+    const body = functionBody("startCaptureListDownload");
+    expect(body).toContain('mime.startsWith("image/") || mime.startsWith("video/")');
+    expect(body).toContain('cmd: "downloadUrl"');
+    expect(body).toContain('kind: kind || "combined"');
+  });
+
+  it("falls back to ranged GET when gallery HEAD size probing is insufficient", () => {
+    const body = functionBody("fetchMediaSize");
+    expect(body).toContain('method: "HEAD"');
+    expect(body).toContain('Range: "bytes=0-0"');
+    expect(body).toContain("Content-Range");
+  });
+
+  it("implements gallery video and image selection filters", () => {
+    const body = functionBody("setGallerySelectedByType");
+    expect(body).toContain('kind === "video"');
+    expect(body).toContain('mime.startsWith("video/")');
+    expect(body).toContain('kind === "image"');
+    expect(body).toContain('mime.startsWith("image/")');
+  });
+
   it("clears active job before re-enabling selected gallery downloads", () => {
     for (const name of ["inlineRenderDone", "inlineRenderError"]) {
       const body = functionBody(name);

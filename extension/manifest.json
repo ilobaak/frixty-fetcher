@@ -19,6 +19,7 @@
     "*://*.youtube.com/*",
     "*://accounts.google.com/*",
     "*://*.instagram.com/*",
+    "*://*.cdninstagram.com/*",
     "*://*.facebook.com/*",
     "*://*.fb.watch/*",
     "*://*.fbcdn.net/*",

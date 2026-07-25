@@ -2028,6 +2028,8 @@ function showGalleryPicker(info) {
   updateGalleryCount();
   el("gallery-download").addEventListener("click", startGalleryDownload);
   el("select-all").addEventListener("click", () => setAllGallerySelected(true));
+  el("select-videos").addEventListener("click", () => setGallerySelectedByType("video"));
+  el("select-images").addEventListener("click", () => setGallerySelectedByType("image"));
   el("select-none").addEventListener("click", () => setAllGallerySelected(false));
   const removeSelBtn = el("gallery-remove-selected");
   if (removeSelBtn && !removeSelBtn.dataset.wired) {
@@ -2225,6 +2227,7 @@ function renderGalleryItems(items) {
   const defaultFilename = saveSettings.filenameMode || "uploader-title";
 
   items.forEach((item, idx) => {
+    const isVideo = item.mime && item.mime.startsWith("video/");
     const row = document.createElement("label");
     row.className = "media-card selectable";
     row.dataset.idx = String(idx);
@@ -2245,21 +2248,31 @@ function renderGalleryItems(items) {
     cb.setAttribute("aria-label", `Select ${idx + 1} of ${total}: ${itemHint}`);
     cb.addEventListener("change", updateGalleryCount);
 
-    const thumb = document.createElement("img");
+    const renderVideoThumb = isVideo && !item.thumbUrl;
+    const thumb = renderVideoThumb ? document.createElement("video") : document.createElement("img");
     thumb.className = "card-thumb";
-    thumb.src = item.thumbUrl || item.url;
-    thumb.loading = "lazy";
-    thumb.alt = "";
+    if (renderVideoThumb) {
+      thumb.src = item.url;
+      thumb.muted = true;
+      thumb.playsInline = true;
+      thumb.preload = "metadata";
+    } else {
+      thumb.src = item.thumbUrl || item.url;
+      thumb.loading = "lazy";
+      thumb.alt = "";
+    }
     // Fill in width/height from the thumb once it decodes, then
     // refresh the meta line so the user sees dimensions on the card
     // even when the capture payload didn't include them (common on
     // grab-button captures — we only learn the real dimensions once
     // the <img> is laid out).
     thumb.addEventListener(
-      "load",
+      renderVideoThumb ? "loadedmetadata" : "load",
       () => {
-        if (!item.width && thumb.naturalWidth) item.width = thumb.naturalWidth;
-        if (!item.height && thumb.naturalHeight) item.height = thumb.naturalHeight;
+        const naturalWidth = renderVideoThumb ? thumb.videoWidth : thumb.naturalWidth;
+        const naturalHeight = renderVideoThumb ? thumb.videoHeight : thumb.naturalHeight;
+        if (!item.width && naturalWidth) item.width = naturalWidth;
+        if (!item.height && naturalHeight) item.height = naturalHeight;
         if (meta && (item.width || item.height)) {
           meta.textContent = galleryItemMetaText(item);
         }
@@ -2358,7 +2371,6 @@ function renderGalleryItems(items) {
     // Kind + Quality follow, and only render for video items.
     const controls = document.createElement("div");
     controls.className = "card-controls";
-    const isVideo = item.mime && item.mime.startsWith("video/");
 
     // Per-item Filename dropdown — mirrors the single pickers so every
     // card has its own stack. [@Poster] - [Title] [Index] is the default
@@ -2486,6 +2498,17 @@ function setAllGallerySelected(checked) {
   updateGalleryCount();
 }
 
+function setGallerySelectedByType(kind) {
+  document.querySelectorAll("#gallery-items .card-check").forEach((c) => {
+    const idx = parseInt(c.dataset.idx, 10);
+    const item = galleryState?.items?.[idx];
+    const mime = typeof item?.mime === "string" ? item.mime : "";
+    if (kind === "video") c.checked = mime.startsWith("video/");
+    else if (kind === "image") c.checked = mime.startsWith("image/");
+  });
+  updateGalleryCount();
+}
+
 function updateGalleryCount() {
   const selected = document.querySelectorAll("#gallery-items .card-check:checked").length;
   el("gallery-download-count").textContent = String(selected);
@@ -2522,16 +2545,49 @@ async function fetchGalleryItemSizes(items) {
   await Promise.all(items.map(async (item, idx) => {
     if (item.bytes) return;
     try {
-      const resp = await fetch(item.url, { method: "HEAD", credentials: "omit" });
-      if (!resp.ok) return;
-      const len = resp.headers.get("Content-Length");
-      if (!len) return;
-      item.bytes = parseInt(len, 10);
+      item.bytes = await fetchMediaSize(item.url);
+      if (!item.bytes) return;
       const row = document.querySelector(`#gallery-items .media-card[data-idx="${idx}"]`);
       const meta = row?.querySelector(".card-meta");
       if (meta) meta.textContent = galleryItemMetaText(item);
     } catch {}
   }));
+}
+
+async function fetchMediaSize(url) {
+  const parseSize = (resp) => {
+    const len = parseInt(resp.headers.get("Content-Length") || "", 10);
+    if (Number.isFinite(len) && len > 0) return len;
+    const range = resp.headers.get("Content-Range") || "";
+    const m = range.match(/\/(\d+)$/);
+    if (m) {
+      const total = parseInt(m[1], 10);
+      if (Number.isFinite(total) && total > 0) return total;
+    }
+    return 0;
+  };
+
+  try {
+    const head = await fetch(url, { method: "HEAD", credentials: "omit" });
+    if (head.ok) {
+      const size = parseSize(head);
+      if (size) return size;
+    }
+  } catch {
+    // Some CDNs reject HEAD from extension pages but allow ranged GET.
+  }
+
+  const ranged = await fetch(url, {
+    method: "GET",
+    credentials: "omit",
+    headers: { Range: "bytes=0-0" },
+  });
+  if (!ranged.ok && ranged.status !== 206) return 0;
+  const size = parseSize(ranged);
+  try {
+    await ranged.body?.cancel();
+  } catch {}
+  return size;
 }
 
 async function startGalleryDownload() {
@@ -2661,28 +2717,29 @@ async function startCaptureListDownload(selected) {
     //     URL in item.url.
     // pickDirectMediaUrl picks the best available: item.url when it
     // points at a media file directly, else thumbUrl.
-    const isImage = typeof item.mime === "string" && item.mime.startsWith("image/");
+    const mime = typeof item.mime === "string" ? item.mime : "";
+    const isDirectMedia = mime.startsWith("image/") || mime.startsWith("video/");
     const directUrl = pickDirectMediaUrl(item);
     // Only set filename hints when we actually have a base. Empty
     // base (no handle AND no title) means "let the downloader derive
     // the name from the URL" — yt-dlp uses its default template, the
     // direct-download path falls back to the URL's basename.
     const safeFileName = defaultBase ? buildSafeFilename(defaultBase, effectiveExt) : "";
-    if (isImage && directUrl) {
-      const imgMsg = {
+    if (isDirectMedia && directUrl) {
+      const directMsg = {
         cmd: "downloadUrl",
         jobId,
         url: directUrl,
         pageUrl: item.url,
-        kind: "combined",     // plain HTTP GET path; kind unused for images
+        kind: kind || "combined",
       };
       if (!saveSettings.downloadAutomatically) {
-        imgMsg.askPath = true;
-        if (safeFileName) imgMsg.defaultFileName = safeFileName;
-        imgMsg.startDir = saveSettings.destinationDir || saveSettings.lastDir || saveSettings.specificDestDir || "";
-        imgMsg.dialogTitle = "Save as…";
+        directMsg.askPath = true;
+        if (safeFileName) directMsg.defaultFileName = safeFileName;
+        directMsg.startDir = saveSettings.destinationDir || saveSettings.lastDir || saveSettings.specificDestDir || "";
+        directMsg.dialogTitle = "Save as…";
       } else {
-        imgMsg.destDir = saveSettings.destinationDir || "";
+        directMsg.destDir = saveSettings.destinationDir || "";
         // Auto-download requires a filename. Prefer title/handle-based,
         // then fall back to the URL's own basename. Never inject a
         // placeholder like "download.mp4".
@@ -2691,10 +2748,10 @@ async function startCaptureListDownload(selected) {
           const urlBase = basenameFromUrl(directUrl).replace(/\.[^.]+$/, "");
           if (urlBase) fname = buildSafeFilename(urlBase, effectiveExt);
         }
-        if (fname) imgMsg.defaultFileName = fname;
-        if (albumName) imgMsg.albumName = albumName;
+        if (fname) directMsg.defaultFileName = fname;
+        if (albumName) directMsg.albumName = albumName;
       }
-      port.postMessage(imgMsg);
+      port.postMessage(directMsg);
       continue;
     }
 

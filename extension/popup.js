@@ -35,6 +35,12 @@ import {
   sanitizeFilenameSegment,
   resolveFilenameMode,
   migrateFilenameSettings,
+  DEFAULT_FILENAME_SCHEME,
+  applyFilenameTemplate,
+  filenameSchemeOptions,
+  filenameTemplateForMode,
+  normalizeCustomFilenameSchemes,
+  sourceTokenFromUrl,
   WIN_RESERVED,
   buildSafeFilename,
   sanitizeLooseFilename,
@@ -217,6 +223,9 @@ let autoFetchFrameSeconds = null;
 let framePreviewTimer = null;
 let framePreviewReqId = null;
 let framePreviewLastKey = "";
+let rangePreviewTimer = null;
+let rangePreviewReqId = null;
+let rangePreviewLastKey = "";
 let currentTitle = "";
 let currentUploader = "";
 let currentUploaderId = "";
@@ -239,7 +248,8 @@ const saveSettings = {
   // uploader-title is the default because it's the only preset that
   // guarantees unique filenames inside a gallery (title alone collides
   // when every item shares the post title).
-  filenameMode: "uploader-title",
+  filenameMode: DEFAULT_FILENAME_SCHEME,
+  customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
   // video, single image, multi-item gallery). Replaces the older
   // gallery-only names; the load path below migrates old values.
@@ -256,7 +266,7 @@ const saveSettings = {
   downloadAutomatically: false,
   destinationDir: "",
   createFolder: true,
-  folderMode: "uploader-title",
+  folderMode: DEFAULT_FILENAME_SCHEME,
   // Per-site cookies strategies: "auto" | "always" | "never".
   // Cookies default to "always" for every supported site. yt-dlp's
   // extractors need authenticated context for most real content on
@@ -299,6 +309,7 @@ async function init() {
   saveSettings.specificDestDir = s.specificDestDir ?? "";
   saveSettings.lastDir = s.lastDir ?? "";
   saveSettings.filenameMode = resolveFilenameMode(s);
+  saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
   // flag inverts: "confirm-each = true" meant "prompt per file" which
   // maps to "automatic = false" under the new naming. When nothing is
@@ -314,7 +325,7 @@ async function init() {
   saveSettings.createFolder = typeof s.createFolder === "boolean"
     ? s.createFolder
     : (typeof s.galleryCreateFolder === "boolean" ? s.galleryCreateFolder : true);
-  saveSettings.folderMode = s.folderMode ?? s.galleryFolderMode ?? "uploader-title";
+  saveSettings.folderMode = s.folderMode ?? s.galleryFolderMode ?? DEFAULT_FILENAME_SCHEME;
   saveSettings.twitterCookiesMode = s.twitterCookiesMode ?? "always";
   saveSettings.youtubeCookiesMode = s.youtubeCookiesMode ?? "always";
   saveSettings.instagramCookiesMode = s.instagramCookiesMode ?? "always";
@@ -452,6 +463,7 @@ function onMessage(msg) {
       break;
     case "framePreview":
       handleFramePreview(msg);
+      handleRangePreview(msg);
       break;
     case "progress":
       if (msg.jobId === activeJobId) dispatchProgress(msg);
@@ -493,6 +505,11 @@ function onMessage(msg) {
           framePreviewReqId = null;
           break;
         }
+        if (msg.reqId && msg.reqId === rangePreviewReqId) {
+          renderRangePreviewError("Preview unavailable");
+          rangePreviewReqId = null;
+          break;
+        }
         dlog("host error (final)", { code: msg.code, message: msg.message });
         dispatchError(msg);
       }
@@ -507,8 +524,15 @@ let dlogLastPct = -10;
 // user still sees media info + controls) and overlay this status via
 // the inline Saved/Error box once the picker is on screen.
 let pendingTerminalStatus = null;
+let pendingRunningProgress = null;
 
 function maybeApplyPendingStatus() {
+  if (pendingRunningProgress) {
+    const p = pendingRunningProgress;
+    pendingRunningProgress = null;
+    disableActivePrimary();
+    inlineRenderRunning(p || { percent: 0 });
+  }
   const s = pendingTerminalStatus;
   if (!s) return;
   pendingTerminalStatus = null;
@@ -580,8 +604,7 @@ async function handleSnapshot(jobList, fetchList = []) {
   if (running) {
     activeJobId = running.id;
     currentTitle = running.title || tabUrl;
-    showRunning(running.progress);
-    return;
+    pendingRunningProgress = running.progress || { percent: 0 };
   }
   // Finished jobs no longer short-circuit into the full-screen terminal
   // view — the user wants the picker to stay visible with the inline
@@ -673,6 +696,9 @@ async function handleSnapshot(jobList, fetchList = []) {
     requestAnimationFrame(() => {
       try { runFetchFlow(); } catch (err) { dlog("auto-fetch threw", err?.message || err); }
     });
+  }
+  if (running) {
+    showRunning(running.progress);
   }
 }
 
@@ -1404,10 +1430,12 @@ function handleFormats(msg) {
   currentDuration = Number(msg.duration) || 0;
   el("title").textContent = currentTitle;
   renderVideoCard(msg);
+  fillFilenameSelect(el("video-filename-mode"), { includeGalleryOnly: false, includeOriginal: false, customValueForSet: "set" });
   populateQualityOptions(msg.items);
   wireKindSwitch();
   wireVideoFilenameMode();
-  void wireYouTubeImageActions();
+  void wireVideoImageActions();
+  void wireVideoRangeActions();
   initDownloadControls("#picker");
   el("download").addEventListener("click", startDownload);
   show("picker");
@@ -1425,7 +1453,7 @@ function wireVideoFilenameMode() {
     input.hidden = sel.value !== "set";
     if (sel.value === "set" && !input.value.trim()) {
       const handle = pickHandleText(currentUploaderId, currentUploader);
-      const base = handle ? `${handle} - ${currentTitle}` : currentTitle;
+      const base = filenameBaseFromMode(DEFAULT_FILENAME_SCHEME, { title: currentTitle, handle });
       input.value = sanitizeFilenameSegment(base);
     }
   };
@@ -1433,7 +1461,7 @@ function wireVideoFilenameMode() {
   sel.onchange = refresh;
 }
 
-async function wireYouTubeImageActions() {
+async function wireVideoImageActions() {
   const isYoutube = (() => {
     try {
       const host = new URL(tabUrl).hostname.toLowerCase();
@@ -1445,8 +1473,7 @@ async function wireYouTubeImageActions() {
   })();
   const box = el("youtube-image-actions");
   if (!box) return;
-  box.hidden = !isYoutube;
-  if (!isYoutube) return;
+  box.hidden = false;
   renderThumbnailPreview(isYoutube);
   const slider = el("yt-frame-slider");
   const input = el("yt-frame-time");
@@ -1490,6 +1517,66 @@ async function wireYouTubeImageActions() {
   };
   renderFramePreviewLoading();
   scheduleFramePreview(prefill.seconds, { immediate: true });
+}
+
+function wireVideoRangeActions() {
+  const box = el("video-range-actions");
+  if (!box) return;
+  box.hidden = false;
+  const startSlider = el("range-start-slider");
+  const endSlider = el("range-end-slider");
+  const startInput = el("range-start-time");
+  const endInput = el("range-end-time");
+  const max = Math.max(0, Math.floor(currentDuration));
+  if (startSlider) {
+    startSlider.max = String(max);
+    startSlider.value = "0";
+  }
+  if (endSlider) {
+    endSlider.max = String(max);
+    endSlider.value = String(max);
+  }
+  if (startInput) startInput.value = "0:00";
+  if (endInput) endInput.value = formatTimestamp(currentDuration || max);
+  const syncPreview = () => {
+    const start = validateTimestamp(startInput.value, currentDuration);
+    if (start.ok) scheduleRangePreview(start.seconds);
+  };
+  const syncFromSlider = (slider, input) => {
+    const seconds = Number(slider.value) || 0;
+    input.value = formatTimestamp(seconds);
+    syncPreview();
+  };
+  startSlider.oninput = () => syncFromSlider(startSlider, startInput);
+  endSlider.oninput = () => syncFromSlider(endSlider, endInput);
+  startInput.onchange = () => {
+    const v = validateTimestamp(startInput.value, currentDuration);
+    if (v.ok) {
+      startSlider.value = String(Math.floor(v.seconds));
+      startInput.value = formatTimestamp(v.seconds);
+      syncPreview();
+    }
+  };
+  endInput.onchange = () => {
+    const v = validateTimestamp(endInput.value, currentDuration);
+    if (v.ok) {
+      endSlider.value = String(Math.floor(v.seconds));
+      endInput.value = formatTimestamp(v.seconds);
+    }
+  };
+  el("range-start-current").onclick = async () => {
+    const selected = frameTimestampSelection(await readCurrentVideoSeconds(), currentDuration);
+    startSlider.value = selected.sliderValue;
+    startInput.value = selected.label;
+    scheduleRangePreview(selected.seconds, { immediate: true });
+  };
+  el("range-end-current").onclick = async () => {
+    const selected = frameTimestampSelection(await readCurrentVideoSeconds(), currentDuration);
+    endSlider.value = selected.sliderValue;
+    endInput.value = selected.label;
+  };
+  el("range-download").onclick = startRangeDownload;
+  scheduleRangePreview(0, { immediate: true });
 }
 
 async function readCurrentVideoSeconds() {
@@ -1584,6 +1671,70 @@ function handleFramePreview(msg) {
   if (!box || !img || !status) return;
   if (!msg.dataUrl) {
     renderFramePreviewError("Preview unavailable");
+    return;
+  }
+  box.hidden = false;
+  img.src = msg.dataUrl;
+  status.hidden = true;
+  status.textContent = "";
+}
+
+function renderRangePreviewLoading() {
+  const box = el("range-frame-preview");
+  const img = el("range-frame-preview-img");
+  const status = el("range-frame-preview-status");
+  if (!box || !img || !status) return;
+  box.hidden = false;
+  status.hidden = false;
+  status.textContent = "Loading range preview...";
+  if (!img.src) img.removeAttribute("src");
+}
+
+function renderRangePreviewError(message) {
+  const box = el("range-frame-preview");
+  const status = el("range-frame-preview-status");
+  if (!box || !status) return;
+  box.hidden = false;
+  status.hidden = false;
+  status.textContent = message;
+}
+
+function scheduleRangePreview(seconds, { immediate = false } = {}) {
+  if (!tabUrl) return;
+  const v = validateTimestamp(String(seconds), currentDuration);
+  if (!v.ok) return;
+  const key = framePreviewKey(tabUrl, v.seconds);
+  if (key === rangePreviewLastKey) return;
+  rangePreviewLastKey = key;
+  if (rangePreviewTimer) clearTimeout(rangePreviewTimer);
+  renderRangePreviewLoading();
+  const run = () => requestRangePreview(v.seconds);
+  if (immediate) run();
+  else rangePreviewTimer = setTimeout(run, 450);
+}
+
+function requestRangePreview(seconds) {
+  rangePreviewTimer = null;
+  rangePreviewReqId = crypto.randomUUID();
+  logFetcher("popup", "range-preview:send", { url: tabUrl, timestamp: seconds });
+  port.postMessage({
+    cmd: "extractFramePreview",
+    reqId: rangePreviewReqId,
+    url: tabUrl,
+    timestamp: seconds,
+    useCookies: effectiveUseCookies,
+  });
+}
+
+function handleRangePreview(msg) {
+  if (!msg.reqId || msg.reqId !== rangePreviewReqId) return;
+  rangePreviewReqId = null;
+  const box = el("range-frame-preview");
+  const img = el("range-frame-preview-img");
+  const status = el("range-frame-preview-status");
+  if (!box || !img || !status) return;
+  if (!msg.dataUrl) {
+    renderRangePreviewError("Preview unavailable");
     return;
   }
   box.hidden = false;
@@ -1689,6 +1840,42 @@ function resolveEffectiveMode() {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function sourceToken() {
+  return sourceTokenFromUrl(tabUrl);
+}
+
+function filenameBaseFromMode(mode, { title = "", handle = "", index = "" } = {}) {
+  const poster = normalizeHandle(handle);
+  const cleanTitle = String(title || "").replace(/\s+/g, " ").trim();
+  const template = filenameTemplateForMode(mode, saveSettings.customFilenameSchemes);
+  if (template) {
+    return applyFilenameTemplate(template, {
+      title: cleanTitle,
+      poster,
+      source: sourceToken(),
+      index,
+    });
+  }
+  if (mode === "title-uploader" && poster) return `${cleanTitle} -- ${poster}`.trim();
+  if (mode === "uploader-title" && poster) return `${poster} -- ${cleanTitle}`.trim();
+  return cleanTitle || poster || sourceToken();
+}
+
+function fillFilenameSelect(sel, { includeGalleryOnly = true, includeOriginal = true, customValueForSet = "setEach" } = {}) {
+  if (!sel) return;
+  const previous = sel.value;
+  sel.innerHTML = "";
+  for (const opt of filenameSchemeOptions(saveSettings.customFilenameSchemes, { includeGalleryOnly, includeOriginal })) {
+    const value = opt.value === "setEach" && customValueForSet === "set" ? "set" : opt.value;
+    if (opt.value === "setEach" && customValueForSet === "omit") continue;
+    if (opt.value === "sequential" && !includeGalleryOnly) continue;
+    sel.add(new Option(opt.label, value));
+  }
+  sel.value = previous && [...sel.options].some((o) => o.value === previous)
+    ? previous
+    : (saveSettings.filenameMode === "sequential" && !includeGalleryOnly ? DEFAULT_FILENAME_SCHEME : saveSettings.filenameMode);
 }
 
 function startDownload() {
@@ -1836,6 +2023,49 @@ function startFrameDownload(seconds) {
   inlineRenderRunning({ percent: 0 });
 }
 
+function startRangeDownload() {
+  const startInput = el("range-start-time");
+  const endInput = el("range-end-time");
+  const start = validateTimestamp(startInput?.value || "0", currentDuration);
+  const end = validateTimestamp(endInput?.value || String(currentDuration), currentDuration);
+  if (!start.ok || !end.ok || end.seconds <= start.seconds) {
+    inlineRenderError({ code: "bad_request", message: "Choose a valid range with the end after the start." });
+    return;
+  }
+  const kind = currentKind();
+  const height = parseInt(el("quality").value, 10) || 0;
+  const includeSubs = false;
+  const fnMode = selectedVideoFilenameMode();
+  const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
+  const handle = pickHandleText(currentUploaderId, currentUploader);
+  const rangeSuffix = `${frameTimestampFilenameSuffix(start.seconds)}-${frameTimestampFilenameSuffix(end.seconds)}`;
+  const base = customName || filenameBaseFromMode(fnMode, { title: currentTitle, handle });
+  const safeBase = buildSafeFilename(`${base} ${rangeSuffix}`, "__EXT__").replace(/\.__EXT__$/, "");
+  const msg = {
+    cmd: "download",
+    jobId: crypto.randomUUID(),
+    url: tabUrl,
+    selection: { kind, height, includeSubs, rangeStart: start.seconds, rangeEnd: end.seconds },
+    useCookies: effectiveUseCookies,
+    filenameTemplate: ytdlpEscapeTemplate(safeBase) + ".%(ext)s",
+  };
+  if (!saveSettings.downloadAutomatically) {
+    msg.askPath = true;
+    msg.defaultFileName = buildSafeFilename(`${base} ${rangeSuffix}`, kind === "audio" ? "m4a" : "mp4");
+    msg.startDir = saveSettings.destinationDir || saveSettings.lastDir || saveSettings.specificDestDir || "";
+    msg.dialogTitle = "Save video range as...";
+  } else {
+    msg.destDir = saveSettings.destinationDir || "";
+    const album = currentAlbumName(handle);
+    if (album) msg.albumName = album;
+  }
+  activeJobId = msg.jobId;
+  clearInlineStatus();
+  disableActivePrimary();
+  port.postMessage(msg);
+  inlineRenderRunning({ percent: 0 });
+}
+
 // ---------------------------------------------------------------------------
 // Image picker
 // ---------------------------------------------------------------------------
@@ -1875,9 +2105,10 @@ function showImagePicker(info) {
   // "sequential" (per-item indexing is meaningless for a 1-of-1
   // download) so map that case to "uploader-title".
   const savedMode = saveSettings.filenameMode === "sequential"
-    ? "uploader-title"
+    ? DEFAULT_FILENAME_SCHEME
     : saveSettings.filenameMode;
   const imgSel = el("image-filename-mode");
+  fillFilenameSelect(imgSel, { includeGalleryOnly: false, includeOriginal: true, customValueForSet: "setEach" });
   if (imgSel) imgSel.value = savedMode;
   wireImageFilenameMode(info);
   initDownloadControls("#image-picker");
@@ -1898,7 +2129,7 @@ function wireImageFilenameMode(info) {
     input.hidden = sel.value !== "setEach";
     if (sel.value === "setEach" && !input.value.trim()) {
       const handle = normalizeHandle(info.handle);
-      const base = handle ? `${handle} - ${info.title}` : info.title;
+      const base = filenameBaseFromMode(DEFAULT_FILENAME_SCHEME, { title: info.title, handle });
       input.value = sanitizeFilenameSegment(base);
     }
   };
@@ -1979,12 +2210,8 @@ async function startImageDownload() {
     fileName = buildSafeFilename(customName, ext);
   } else if (filenameMode === "original") {
     fileName = sanitizeLooseFilename(galleryState.basename || buildSafeFilename(galleryState.title, ext));
-  } else if (filenameMode === "title-uploader" && handle) {
-    fileName = buildSafeFilename(`${galleryState.title} - ${handle}`, ext);
-  } else if (filenameMode === "uploader-title" && handle) {
-    fileName = buildSafeFilename(`${handle} - ${galleryState.title}`, ext);
   } else {
-    fileName = buildSafeFilename(galleryState.title, ext);
+    fileName = buildSafeFilename(filenameBaseFromMode(filenameMode, { title: galleryState.title, handle }), ext);
   }
 
   const msg = {
@@ -2120,8 +2347,10 @@ function initDownloadControls(_pickerSelector) {
   // "Download to a new folder in destination" + new-folder-name mode.
   folderToggle.checked = !!saveSettings.createFolder;
   folderBody.hidden = !folderToggle.checked;
+  fillFilenameSelect(folderMode, { includeGalleryOnly: false, includeOriginal: false, customValueForSet: "omit" });
+  folderMode.add(new Option("Set folder name", "set"));
   folderMode.value = saveSettings.folderMode;
-  folderCustom.value = defaultAlbumName("uploader-title");
+  folderCustom.value = defaultAlbumName(DEFAULT_FILENAME_SCHEME);
   folderCustom.hidden = folderMode.value !== "set";
 
   folderToggle.onchange = () => {
@@ -2179,15 +2408,18 @@ function currentAlbumName(preferredHandle) {
     return buildSafeFolderName(custom || title);
   }
   const handle = normalizeHandle(preferredHandle || "");
+  if (mode === DEFAULT_FILENAME_SCHEME || mode.startsWith("custom:")) {
+    return buildSafeFolderName(filenameBaseFromMode(mode, { title, handle }));
+  }
   // Combine only what's present — empty title with a handle should not
   // leave a trailing " - "; missing both drops the folder entirely.
   if (mode === "title-uploader") {
-    if (handle && title) return buildSafeFolderName(`${title} - ${handle}`);
+    if (handle && title) return buildSafeFolderName(`${title} -- ${handle}`);
     if (title) return buildSafeFolderName(title);
     return buildSafeFolderName(handle);
   }
   if (mode === "uploader-title") {
-    if (handle && title) return buildSafeFolderName(`${handle} - ${title}`);
+    if (handle && title) return buildSafeFolderName(`${handle} -- ${title}`);
     if (handle) return buildSafeFolderName(handle);
     return buildSafeFolderName(title);
   }
@@ -2201,13 +2433,16 @@ function defaultAlbumName(mode) {
   const handleSrc = galleryState?.handle || currentUploaderId || currentUploader || "";
   const handle = normalizeHandle(handleSrc);
   const title = (galleryState?.title || currentTitle || "").toString().trim();
+  if (mode === DEFAULT_FILENAME_SCHEME || mode.startsWith("custom:")) {
+    return buildSafeFolderName(filenameBaseFromMode(mode, { title, handle }));
+  }
   if (mode === "title-uploader") {
-    if (handle && title) return buildSafeFolderName(`${title} - ${handle}`);
+    if (handle && title) return buildSafeFolderName(`${title} -- ${handle}`);
     if (title) return buildSafeFolderName(title);
     return buildSafeFolderName(handle);
   }
   if (mode === "uploader-title") {
-    if (handle && title) return buildSafeFolderName(`${handle} - ${title}`);
+    if (handle && title) return buildSafeFolderName(`${handle} -- ${title}`);
     if (handle) return buildSafeFolderName(handle);
     return buildSafeFolderName(title);
   }
@@ -2361,8 +2596,34 @@ function renderGalleryItems(items) {
       removeGalleryItemByUrl(item.url);
     }, true);
 
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "card-save";
+    saveBtn.title = "Download item";
+    saveBtn.setAttribute("aria-label", `Download ${idx + 1} of ${total}`);
+    saveBtn.textContent = "↓";
+    saveBtn.addEventListener("mousedown", stop, true);
+    saveBtn.addEventListener("pointerdown", stop, true);
+    saveBtn.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      const rowNow = saveBtn.closest(".media-card");
+      const filenameMode = rowNow?.querySelector(".gallery-item-filename")?.value || saveSettings.filenameMode;
+      const customName = filenameMode === "setEach"
+        ? (rowNow?.querySelector(".gallery-item-filename-custom")?.value || "").trim()
+        : "";
+      const kind = rowNow?.querySelector(".gallery-item-kind")?.value || "combined";
+      const maxHeight = parseInt(rowNow?.querySelector(".gallery-item-quality")?.value || "0", 10) || 0;
+      await persistSetting("filenameMode", filenameMode);
+      if (galleryState?.isCaptureList) {
+        await startCaptureListDownload([{ item, maxHeight, kind, filenameMode, customName }]);
+      } else {
+        await startGallerySingleItem(item, filenameMode, maxHeight, kind, customName);
+      }
+    }, true);
+
     row.classList.add("has-remove");
-    top.append(cb, thumbNode, info, pos, rm);
+    top.append(cb, thumbNode, info, pos, saveBtn, rm);
     row.append(top);
 
     // Controls row spans the full card width (sits below card-top).
@@ -2387,12 +2648,10 @@ function renderGalleryItems(items) {
     // appends an index — the label should reflect that, otherwise the
     // user sees "[Index]" even though no index shows up in the filename.
     const indexSuffix = total > 1 ? " [Index]" : "";
-    fSel.add(new Option(`[@Poster] - [Title]${indexSuffix}`, "uploader-title"));
-    fSel.add(new Option(`[Title] - [@Poster]${indexSuffix}`, "title-uploader"));
-    fSel.add(new Option(`[Title]${indexSuffix}`, "title"));
-    fSel.add(new Option("Index", "sequential"));
-    fSel.add(new Option("Original filename", "original"));
-    fSel.add(new Option("User set", "setEach"));
+    for (const opt of filenameSchemeOptions(saveSettings.customFilenameSchemes)) {
+      const label = opt.galleryIndex && total > 1 ? `${opt.label}${indexSuffix}` : opt.label;
+      fSel.add(new Option(label, opt.value));
+    }
     fSel.value = defaultFilename;
     fLabel.append(fSpan, fSel);
     controls.append(fLabel);
@@ -2413,7 +2672,7 @@ function renderGalleryItems(items) {
       const handleStr = normalizeHandle(item.handle) ||
         normalizeHandle(galleryState?.handle || "");
       const titleStr = galleryState?.title || item.basename || "download";
-      const base = handleStr ? `${handleStr} - ${titleStr}` : titleStr;
+      const base = filenameBaseFromMode(DEFAULT_FILENAME_SCHEME, { title: titleStr, handle: handleStr });
       const indexed = total > 1
         ? `${base} ${String(idx + 1).padStart(digits, "0")}`
         : base;
@@ -2829,16 +3088,7 @@ function buildCaptureDefaultBase(item, typed, filenameMode) {
   if (filenameMode === "setEach" && typed) return typed;
   const handle = normalizeHandle(item.handle || "");
   const title = (item.capturedTitle || "").replace(/\s+/g, " ").trim();
-  if (filenameMode === "title-uploader") {
-    if (handle && title) return `${title} - ${handle}`.slice(0, 150);
-    if (title) return title.slice(0, 150);
-    if (handle) return handle;
-    return "";
-  }
-  if (handle && title) return `${handle} - ${title}`.slice(0, 150);
-  if (handle) return handle;
-  if (title) return title.slice(0, 150);
-  return "";
+  return filenameBaseFromMode(filenameMode, { title, handle }).slice(0, 150);
 }
 
 // Save a text-only capture (e.g. a text tweet) to disk. Uses
@@ -2859,12 +3109,8 @@ async function downloadTextCapture(item, filenameMode, customName = "") {
     fileName = buildSafeFilename(typed, "txt");
   } else if (filenameMode === "original") {
     fileName = sanitizeLooseFilename((item.basename || "tweet") + ".txt");
-  } else if (filenameMode === "title-uploader" && handle) {
-    fileName = buildSafeFilename(`${item.basename || "tweet"} - ${handle}`, "txt");
-  } else if (filenameMode === "uploader-title" && handle) {
-    fileName = buildSafeFilename(`${handle} - ${item.basename || "tweet"}`, "txt");
   } else {
-    fileName = buildSafeFilename(item.basename || "tweet", "txt");
+    fileName = buildSafeFilename(filenameBaseFromMode(filenameMode, { title: item.basename || "tweet", handle }), "txt");
   }
   try {
     const blob = new Blob([payload], { type: "text/plain;charset=utf-8" });
@@ -2901,12 +3147,8 @@ async function startGallerySingleItem(item, filenameMode, maxHeight, kind, custo
         ? item.basename.replace(/\.[^.]+$/, "") + ".m4a"
         : item.basename
     );
-  } else if (filenameMode === "title-uploader" && handle) {
-    fileName = buildSafeFilename(`${galleryState.title} - ${handle}`, ext);
-  } else if (filenameMode === "uploader-title" && handle) {
-    fileName = buildSafeFilename(`${handle} - ${galleryState.title}`, ext);
   } else {
-    fileName = buildSafeFilename(galleryState.title, ext);
+    fileName = buildSafeFilename(filenameBaseFromMode(filenameMode, { title: galleryState.title, handle }), ext);
   }
 
   const msg = {
@@ -2956,17 +3198,11 @@ async function persistSetting(key, value) {
 function guessDefaultName(title, kind, fnMode) {
   const ext = kind === "audio" ? "m4a" : "mp4";
   const handle = pickHandleText(currentUploaderId, currentUploader);
-  if (fnMode === "title-uploader" && handle) {
-    return buildSafeFilename(`${title} - ${handle}`, ext);
-  }
-  if ((fnMode === "uploader-title" || fnMode === "set") && handle) {
-    return buildSafeFilename(`${handle} - ${title}`, ext);
-  }
-  return buildSafeFilename(title, ext);
+  return buildSafeFilename(filenameBaseFromMode(fnMode === "set" ? DEFAULT_FILENAME_SCHEME : fnMode, { title, handle }), ext);
 }
 
 function selectedVideoFilenameMode() {
-  return el("video-filename-mode")?.value ?? "uploader-title";
+  return el("video-filename-mode")?.value ?? DEFAULT_FILENAME_SCHEME;
 }
 
 // ytdlpEscapeTemplate escapes the one character yt-dlp's output template
@@ -3005,11 +3241,19 @@ function buildGalleryItemName(item, idx, total, digits, filenameMode, handle, cu
     // or we'd end up with " 01 01" when the user leaves the default.
     return buildSafeFilename(typed, ext);
   }
+  if (filenameMode === DEFAULT_FILENAME_SCHEME || filenameMode.startsWith("custom:")) {
+    const index = total > 1 ? String(idx + 1).padStart(digits, "0") : "";
+    const prefix = filenameBaseFromMode(filenameMode, { title: galleryState.title, handle, index });
+    if (total > 1 && (!index || !prefix.includes(index))) {
+      return buildSafeFilename(prefix, ext, " " + index);
+    }
+    return buildSafeFilename(prefix, ext);
+  }
   if (filenameMode === "title" || filenameMode === "uploader-title" || filenameMode === "title-uploader") {
     const prefix = (filenameMode === "uploader-title" && handle)
-      ? `${handle} - ${galleryState.title}`
+      ? `${handle} -- ${galleryState.title}`
       : (filenameMode === "title-uploader" && handle)
-        ? `${galleryState.title} - ${handle}`
+        ? `${galleryState.title} -- ${handle}`
       : galleryState.title;
     // Pass the index as a suffix so long titles get clipped without
     // eating the " NN" — the index is what guarantees uniqueness inside
@@ -3033,12 +3277,17 @@ function buildGalleryItemName(item, idx, total, digits, filenameMode, handle, cu
 // prepended by yt-dlp — if a site's uploader field lacks it, the file name
 // just lacks it too rather than mixing two different conventions.
 function videoFilenameTemplate(fnMode) {
+  if (fnMode === DEFAULT_FILENAME_SCHEME || fnMode.startsWith("custom:")) {
+    const handle = pickHandleText(currentUploaderId, currentUploader);
+    const base = buildSafeFilename(filenameBaseFromMode(fnMode, { title: currentTitle, handle }), "__EXT__").replace(/\.__EXT__$/, "");
+    if (base) return ytdlpEscapeTemplate(base) + ".%(ext)s";
+  }
   if (fnMode === "title-uploader") {
     const id = currentUploaderId || "";
     if (id && /^\d+$/.test(id)) {
-      return "%(title)s - %(uploader,uploader_id|unknown)s.%(ext)s";
+      return "%(title)s -- %(uploader,uploader_id|unknown)s.%(ext)s";
     }
-    return "%(title)s - %(uploader_id,uploader|unknown)s.%(ext)s";
+    return "%(title)s -- %(uploader_id,uploader|unknown)s.%(ext)s";
   }
   if (fnMode !== "uploader-title") return "%(title)s.%(ext)s";
   // When the current listing returned a purely-numeric uploader_id
@@ -3048,9 +3297,9 @@ function videoFilenameTemplate(fnMode) {
   // the fallback.
   const id = currentUploaderId || "";
   if (id && /^\d+$/.test(id)) {
-    return "%(uploader,uploader_id|unknown)s - %(title)s.%(ext)s";
+    return "%(uploader,uploader_id|unknown)s -- %(title)s.%(ext)s";
   }
-  return "%(uploader_id,uploader|unknown)s - %(title)s.%(ext)s";
+  return "%(uploader_id,uploader|unknown)s -- %(title)s.%(ext)s";
 }
 
 // buildSafeFolderName sanitizes `base` into something every major

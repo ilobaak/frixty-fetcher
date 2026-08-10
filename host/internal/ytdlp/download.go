@@ -21,7 +21,9 @@ type Selection struct {
 	// subs via --no-write-subs so a yt-dlp config or extractor default
 	// can't sneak a .vtt past the user. When the source has no
 	// subtitles, yt-dlp skips silently — no error, no crash.
-	IncludeSubs bool `json:"includeSubs,omitempty"`
+	IncludeSubs bool    `json:"includeSubs,omitempty"`
+	RangeStart  float64 `json:"rangeStart,omitempty"`
+	RangeEnd    float64 `json:"rangeEnd,omitempty"`
 }
 
 // BuildArgs returns the yt-dlp argv for a given selection, destination, and URL.
@@ -64,6 +66,12 @@ func BuildArgs(sel Selection, destDir, output, url, cookiesFile, filenameTemplat
 	} else {
 		args = append(args, "--no-write-subs", "--no-write-auto-subs")
 	}
+	if sel.RangeEnd > sel.RangeStart && sel.RangeStart >= 0 {
+		args = append(args,
+			"--download-sections", fmt.Sprintf("*%s-%s", sectionTimestamp(sel.RangeStart), sectionTimestamp(sel.RangeEnd)),
+			"--force-keyframes-at-cuts",
+		)
+	}
 	args = append(args, youtubeExtractorArgs()...)
 	if cookiesFile != "" {
 		args = append(args, "--cookies", cookiesFile)
@@ -92,6 +100,13 @@ func BuildArgs(sel Selection, destDir, output, url, cookiesFile, filenameTemplat
 	}
 	args = append(args, "-o", tmpl, url)
 	return args
+}
+
+func sectionTimestamp(seconds float64) string {
+	if seconds < 0 {
+		seconds = 0
+	}
+	return strconv.FormatFloat(seconds, 'f', 3, 64)
 }
 
 // outputTemplate prepares the user's Save As path for yt-dlp's -o
@@ -205,4 +220,3 @@ func (r *DownloadResult) Stderr() string {
 	}
 	return r.stderr.String()
 }
-

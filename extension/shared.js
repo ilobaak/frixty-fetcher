@@ -153,6 +153,141 @@ export function pickHandleText(uploaderId, uploader) {
   return normalizeHandle(uploader);
 }
 
+export const DEFAULT_FILENAME_SCHEME = "title-uploader-source";
+
+export const BUILTIN_FILENAME_SCHEMES = [
+  {
+    value: "title-uploader-source",
+    label: "[Title] -- [@Poster] -- [Source]",
+    template: "[Title] -- [@Poster] -- [Source]",
+    galleryIndex: true,
+  },
+  {
+    value: "title-uploader",
+    label: "[Title] -- [@Poster]",
+    template: "[Title] -- [@Poster]",
+    galleryIndex: true,
+  },
+  {
+    value: "uploader-title",
+    label: "[@Poster] -- [Title]",
+    template: "[@Poster] -- [Title]",
+    galleryIndex: true,
+  },
+  {
+    value: "title",
+    label: "[Title]",
+    template: "[Title]",
+    galleryIndex: true,
+  },
+  {
+    value: "sequential",
+    label: "[Index]",
+    template: "[Index]",
+    galleryOnly: true,
+  },
+  {
+    value: "original",
+    label: "Original filename",
+    template: "",
+  },
+  {
+    value: "setEach",
+    label: "User set",
+    template: "",
+  },
+];
+
+export function sourceTokenFromUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    if (!host) return "";
+    if (
+      host === "twitter.com" ||
+      host.endsWith(".twitter.com") ||
+      host === "x.com" ||
+      host.endsWith(".x.com")
+    ) {
+      return "x.com";
+    }
+    const parts = host.split(".").filter(Boolean);
+    if (parts.length >= 2 && parts[parts.length - 1] === "com") {
+      return parts[parts.length - 2];
+    }
+    return parts[0] || host;
+  } catch {
+    return "";
+  }
+}
+
+export function normalizeCustomFilenameSchemes(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const entry of raw) {
+    const id = String(entry?.id || "").trim();
+    const name = String(entry?.name || "").trim();
+    const template = String(entry?.template || "").trim();
+    if (!id || !name || !template || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name, template });
+  }
+  return out;
+}
+
+export function filenameSchemeOptions(
+  customSchemes = [],
+  { includeGalleryOnly = true, includeOriginal = true } = {},
+) {
+  const builtins = BUILTIN_FILENAME_SCHEMES.filter((s) => {
+    if (!includeGalleryOnly && s.galleryOnly) return false;
+    if (!includeOriginal && s.value === "original") return false;
+    return true;
+  });
+  return [
+    ...builtins,
+    ...normalizeCustomFilenameSchemes(customSchemes).map((s) => ({
+      value: `custom:${s.id}`,
+      label: s.name,
+      template: s.template,
+      custom: true,
+      galleryIndex: true,
+    })),
+  ];
+}
+
+export function filenameTemplateForMode(mode, customSchemes = []) {
+  if (typeof mode === "string" && mode.startsWith("custom:")) {
+    const id = mode.slice("custom:".length);
+    const found = normalizeCustomFilenameSchemes(customSchemes).find((s) => s.id === id);
+    return found?.template || "";
+  }
+  return BUILTIN_FILENAME_SCHEMES.find((s) => s.value === mode)?.template || "";
+}
+
+export function applyFilenameTemplate(template, tokens = {}) {
+  let out = String(template || "");
+  const replacements = {
+    "[Title]": tokens.title || "",
+    "[@Poster]": tokens.poster || "",
+    "[Poster]": tokens.poster || "",
+    "[Source]": tokens.source || "",
+    "[source]": tokens.source || "",
+    "[Site]": tokens.source || "",
+    "[site]": tokens.source || "",
+    "[Index]": tokens.index || "",
+  };
+  for (const [token, value] of Object.entries(replacements)) {
+    out = out.split(token).join(String(value || ""));
+  }
+  return out
+    .replace(/\s+--\s+(?=--|$)/g, " -- ")
+    .replace(/(^|\s)--\s*$/g, "")
+    .replace(/^\s*--\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // SUPPORTED_HOSTS lists registrable domains the popup auto-probes
 // without prompting. Mirror of host/internal/probe/probe.go's
 // `Supported` slice — keep in sync. Anything outside this list goes
@@ -199,8 +334,9 @@ export function isKnownHost(url) {
 // "uploader-title" at the UI layer since per-item indexing has no
 // meaning for a 1-of-1 download.
 export function resolveFilenameMode(s) {
-  const raw = s.filenameMode ?? s.galleryFilenameMode ?? s.imageFilenameMode ?? "uploader-title";
-  return raw === "default" ? "uploader-title" : raw;
+  const raw =
+    s.filenameMode ?? s.galleryFilenameMode ?? s.imageFilenameMode ?? DEFAULT_FILENAME_SCHEME;
+  return raw === "default" || raw === "uploader-title-source" ? DEFAULT_FILENAME_SCHEME : raw;
 }
 
 // migrateFilenameSettings collapses legacy filename-mode keys into the
@@ -221,6 +357,8 @@ export function migrateFilenameSettings(settings) {
   }
   if (next.filenameMode === undefined) {
     next.filenameMode = resolveFilenameMode(next);
+  } else if (next.filenameMode === "uploader-title-source") {
+    next.filenameMode = DEFAULT_FILENAME_SCHEME;
   }
   delete next.imageFilenameMode;
   delete next.galleryFilenameMode;

@@ -62,13 +62,13 @@ describe("capture-list downloads", () => {
 
 describe("popup naming modes", () => {
   it("implements title-poster filenames across popup download paths", () => {
-    expect(functionBody("guessDefaultName")).toContain('fnMode === "title-uploader"');
+    expect(functionBody("guessDefaultName")).toContain("filenameBaseFromMode");
     expect(functionBody("videoFilenameTemplate")).toContain('fnMode === "title-uploader"');
     expect(functionBody("buildGalleryItemName")).toContain('filenameMode === "title-uploader"');
-    expect(functionBody("buildCaptureDefaultBase")).toContain('filenameMode === "title-uploader"');
-    expect(functionBody("startImageDownload")).toContain('filenameMode === "title-uploader"');
-    expect(functionBody("downloadTextCapture")).toContain('filenameMode === "title-uploader"');
-    expect(functionBody("startGallerySingleItem")).toContain('filenameMode === "title-uploader"');
+    expect(functionBody("buildCaptureDefaultBase")).toContain("filenameBaseFromMode");
+    expect(functionBody("startImageDownload")).toContain("filenameBaseFromMode");
+    expect(functionBody("downloadTextCapture")).toContain("filenameBaseFromMode");
+    expect(functionBody("startGallerySingleItem")).toContain("filenameBaseFromMode");
   });
 
   it("implements title-poster folder names", () => {

@@ -3,7 +3,13 @@
 // folder dialog opens. The browser can't open it directly from an options
 // page.
 
-import { resolveFilenameMode, migrateFilenameSettings } from "./shared.js";
+import {
+  DEFAULT_FILENAME_SCHEME,
+  filenameSchemeOptions,
+  migrateFilenameSettings,
+  normalizeCustomFilenameSchemes,
+  resolveFilenameMode,
+} from "./shared.js";
 
 const DEFAULT_MODE = "ask";
 
@@ -22,6 +28,19 @@ const updateResultEl = el("update-result");
 const hostVersionEl = el("host-version");
 const checkHostUpdatesBtn = el("check-host-updates");
 const hostUpdateResultEl = el("host-update-result");
+const integratedCategoriesEl = el("integrated-categories");
+const customSchemesEl = el("custom-schemes");
+const customSchemeNameEl = el("custom-scheme-name");
+const customSchemeTemplateEl = el("custom-scheme-template");
+const addCustomSchemeBtn = el("add-custom-scheme");
+
+const INTEGRATED_CATEGORIES = [
+  ["reddit", "Reddit", true],
+  ["facebook", "Facebook", true],
+  ["twitter", "Twitter / X", true],
+  ["youtube", "YouTube", true],
+  ["other", "Other sites", false],
+];
 
 let current = {
   saveMode: DEFAULT_MODE,
@@ -31,7 +50,9 @@ let current = {
   // Values: "uploader-title" | "title-uploader" | "title" | "sequential" | "original" | "setEach".
   // The image picker maps "sequential" to "uploader-title" since per-item
   // indexing is meaningless for a 1-of-1 download.
-  filenameMode: "uploader-title",
+  filenameMode: DEFAULT_FILENAME_SCHEME,
+  customFilenameSchemes: [],
+  integratedButtonSettings: {},
   twitterCookiesMode: "always",
   youtubeCookiesMode: "always",
   instagramCookiesMode: "always",
@@ -168,6 +189,8 @@ async function load() {
   current.specificDestDir = s.specificDestDir ?? "";
   current.lastDir = s.lastDir ?? "";
   current.filenameMode = resolveFilenameMode(s);
+  current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
+  current.integratedButtonSettings = migrateIntegratedButtonSettings(s.integratedButtonSettings || {});
   current.twitterCookiesMode = s.twitterCookiesMode ?? "always";
   current.youtubeCookiesMode = s.youtubeCookiesMode ?? "always";
   current.instagramCookiesMode = s.instagramCookiesMode ?? "always";
@@ -178,6 +201,8 @@ async function load() {
   if (modeRadio) modeRadio.checked = true;
   const fnRadio = document.querySelector(`input[name="filename-mode"][value="${current.filenameMode}"]`);
   if (fnRadio) fnRadio.checked = true;
+  renderCustomSchemes();
+  renderIntegratedCategories();
   const twtRadio = document.querySelector(`input[name="twitter-cookies-mode"][value="${current.twitterCookiesMode}"]`);
   if (twtRadio) twtRadio.checked = true;
   const ytRadio = document.querySelector(`input[name="youtube-cookies-mode"][value="${current.youtubeCookiesMode}"]`);
@@ -226,7 +251,8 @@ async function save() {
     showError("Pick a folder before choosing “Save to:”.");
     return;
   }
-  current.filenameMode = document.querySelector('input[name="filename-mode"]:checked')?.value ?? "uploader-title";
+  current.filenameMode = document.querySelector('input[name="filename-mode"]:checked')?.value ?? DEFAULT_FILENAME_SCHEME;
+  current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
   current.youtubeCookiesMode = document.querySelector('input[name="youtube-cookies-mode"]:checked')?.value ?? "always";
   current.instagramCookiesMode = document.querySelector('input[name="instagram-cookies-mode"]:checked')?.value ?? "always";
@@ -242,6 +268,8 @@ async function save() {
       saveMode: current.saveMode,
       specificDestDir: current.specificDestDir,
       filenameMode: current.filenameMode,
+      customFilenameSchemes: current.customFilenameSchemes,
+      integratedButtonSettings: current.integratedButtonSettings,
       twitterCookiesMode: current.twitterCookiesMode,
       youtubeCookiesMode: current.youtubeCookiesMode,
       instagramCookiesMode: current.instagramCookiesMode,
@@ -250,6 +278,119 @@ async function save() {
     },
   });
   flashSaved();
+}
+
+function migrateIntegratedButtonSettings(raw) {
+  const out = {};
+  for (const [key, , defaultDownload] of INTEGRATED_CATEGORIES) {
+    const entry = raw?.[key] || {};
+    out[key] = {
+      behavior: entry.behavior || (defaultDownload ? "download" : "fetch"),
+      filenameMode: entry.filenameMode || DEFAULT_FILENAME_SCHEME,
+    };
+  }
+  return out;
+}
+
+function renderIntegratedCategories() {
+  if (!integratedCategoriesEl) return;
+  integratedCategoriesEl.innerHTML = "";
+  for (const [key, label] of INTEGRATED_CATEGORIES) {
+    const settings = current.integratedButtonSettings[key] || {};
+    const box = document.createElement("div");
+    box.className = "specific-body integrated-category";
+    box.dataset.category = key;
+
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    box.append(heading);
+
+    const behavior = document.createElement("select");
+    behavior.className = "integrated-behavior";
+    behavior.add(new Option("Download media", "download"));
+    behavior.add(new Option("Fetch into extension", "fetch"));
+    behavior.value = settings.behavior || "download";
+
+    const scheme = document.createElement("select");
+    scheme.className = "integrated-filename-mode";
+    for (const opt of filenameSchemeOptions(current.customFilenameSchemes, { includeGalleryOnly: false, includeOriginal: false })) {
+      if (opt.value === "setEach") continue;
+      scheme.add(new Option(opt.label, opt.value));
+    }
+    scheme.value = settings.filenameMode || DEFAULT_FILENAME_SCHEME;
+
+    const behaviorLabel = document.createElement("label");
+    behaviorLabel.className = "card-control";
+    behaviorLabel.append(document.createElement("span"), behavior);
+    behaviorLabel.firstElementChild.textContent = "Button action";
+
+    const schemeLabel = document.createElement("label");
+    schemeLabel.className = "card-control";
+    schemeLabel.append(document.createElement("span"), scheme);
+    schemeLabel.firstElementChild.textContent = "Filename";
+
+    box.append(behaviorLabel, schemeLabel);
+    integratedCategoriesEl.append(box);
+  }
+}
+
+function readIntegratedButtonSettings() {
+  const out = {};
+  for (const box of document.querySelectorAll(".integrated-category")) {
+    const key = box.dataset.category;
+    out[key] = {
+      behavior: box.querySelector(".integrated-behavior")?.value || "download",
+      filenameMode: box.querySelector(".integrated-filename-mode")?.value || DEFAULT_FILENAME_SCHEME,
+    };
+  }
+  return migrateIntegratedButtonSettings(out);
+}
+
+function renderCustomSchemes() {
+  if (!customSchemesEl) return;
+  customSchemesEl.innerHTML = "";
+  if (current.customFilenameSchemes.length === 0) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No custom schemes saved.";
+    customSchemesEl.append(p);
+    return;
+  }
+  for (const scheme of current.customFilenameSchemes) {
+    const row = document.createElement("div");
+    row.className = "specific-body custom-scheme-row";
+    const name = document.createElement("span");
+    name.textContent = `${scheme.name}: ${scheme.template}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.onclick = () => {
+      current.customFilenameSchemes = current.customFilenameSchemes.filter((s) => s.id !== scheme.id);
+      renderCustomSchemes();
+      renderIntegratedCategories();
+    };
+    row.append(name, remove);
+    customSchemesEl.append(row);
+  }
+}
+
+function addCustomScheme() {
+  const name = String(customSchemeNameEl?.value || "").trim();
+  const template = String(customSchemeTemplateEl?.value || "").trim();
+  if (!name || !template) {
+    showError("Enter a name and filename scheme.");
+    return;
+  }
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  current.customFilenameSchemes = normalizeCustomFilenameSchemes([
+    ...current.customFilenameSchemes,
+    { id, name, template },
+  ]);
+  customSchemeNameEl.value = "";
+  customSchemeTemplateEl.value = "";
+  hideError();
+  renderCustomSchemes();
+  renderIntegratedCategories();
 }
 
 function flashSaved() {
@@ -292,6 +433,8 @@ checkHostUpdatesBtn.addEventListener("click", () => {
   showHostUpdateResult("Checking…", "");
   port.postMessage({ cmd: "selfHostUpdate" });
 });
+
+if (addCustomSchemeBtn) addCustomSchemeBtn.addEventListener("click", addCustomScheme);
 
 connect();
 load();

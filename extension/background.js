@@ -2,7 +2,19 @@
 // Putting this here (not in the popup) means a download survives the popup
 // being closed — Chrome keeps the worker alive while the native port is open.
 
-import { shortcodeToMediaId, computeSyndicationToken, IG_APP_ID } from "./shared.js";
+import {
+  shortcodeToMediaId,
+  computeSyndicationToken,
+  IG_APP_ID,
+  DEFAULT_FILENAME_SCHEME,
+  applyFilenameTemplate,
+  filenameTemplateForMode,
+  normalizeCustomFilenameSchemes,
+  normalizeHandle,
+  sourceTokenFromUrl,
+  buildSafeFilename,
+  basenameFromUrl,
+} from "./shared.js";
 import { getFacebookStoryFromInterceptor, getFacebookDomInfo } from "./facebook.js";
 import {
   captureKey,
@@ -261,6 +273,133 @@ async function startPersistentListFormats({ port = null, tabId = 0, url, useCook
   return reqId;
 }
 
+function integratedCategoryForUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (/(^|\.)reddit\.com$|(^|\.)redd\.it$/.test(host)) return "reddit";
+    if (/(^|\.)facebook\.com$|(^|\.)fb\.watch$/.test(host)) return "facebook";
+    if (/(^|\.)twitter\.com$|(^|\.)x\.com$/.test(host)) return "twitter";
+    if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(host)) return "youtube";
+    return "other";
+  } catch {
+    return "other";
+  }
+}
+
+function defaultIntegratedSettings() {
+  return {
+    reddit: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+    facebook: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+    twitter: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+    youtube: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+    other: { behavior: "fetch", filenameMode: DEFAULT_FILENAME_SCHEME },
+  };
+}
+
+async function readIntegratedSetting(url) {
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  const all = { ...defaultIntegratedSettings(), ...(settings.integratedButtonSettings || {}) };
+  const category = integratedCategoryForUrl(url);
+  return {
+    category,
+    customFilenameSchemes: normalizeCustomFilenameSchemes(settings.customFilenameSchemes),
+    ...all[category],
+  };
+}
+
+async function prefetchActiveTabMedia(tabId, url) {
+  if (!tabId || !url || integratedCategoryForUrl(url) === "other") return;
+  for (const [, f] of persistentFetches) {
+    if (f.tabId === tabId && f.url === url && (f.status === "running" || f.status === "done"))
+      return;
+  }
+  try {
+    const setting = await readIntegratedSetting(url);
+    const useCookies = setting.category === "other" ? false : true;
+    await startPersistentListFormats({ tabId, url, useCookies });
+    dlog("prefetch active tab", { tabId, url: url.slice(0, 100), useCookies });
+  } catch (err) {
+    dlog("prefetch active tab failed", err?.message || err);
+  }
+}
+
+function concreteFilenameBase({ mode, customFilenameSchemes, title, poster, url }) {
+  const template = filenameTemplateForMode(mode || DEFAULT_FILENAME_SCHEME, customFilenameSchemes);
+  const handle = normalizeHandle(poster || "");
+  if (template) {
+    return applyFilenameTemplate(template, {
+      title: title || "",
+      poster: handle,
+      source: sourceTokenFromUrl(url),
+      index: "",
+    });
+  }
+  if (mode === "title-uploader" && handle) return `${title || ""} -- ${handle}`.trim();
+  if (mode === "uploader-title" && handle) return `${handle} -- ${title || ""}`.trim();
+  return title || handle || sourceTokenFromUrl(url);
+}
+
+async function startIntegratedPayloadDownload(tabId, payload) {
+  const url = typeof payload?.url === "string" ? payload.url : "";
+  if (!url) return false;
+  const setting = await readIntegratedSetting(url);
+  if (setting.behavior !== "download") return false;
+  const jobId = crypto.randomUUID();
+  const title = payload.title || payload.capturedTitle || payload.basename || "";
+  const poster = payload.author || payload.handle || "";
+  const ext = payload.ext || (payload.mime || "").split("/").pop() || "mp4";
+  const base = concreteFilenameBase({
+    mode: setting.filenameMode,
+    customFilenameSchemes: setting.customFilenameSchemes,
+    title,
+    poster,
+    url,
+  });
+  const defaultFileName = buildSafeFilename(
+    base || basenameFromUrl(url).replace(/\.[^.]+$/, ""),
+    ext === "jpeg" ? "jpg" : ext,
+  );
+  const direct =
+    /^https?:\/\//.test(url) && /\.(jpe?g|png|gif|webp|mp4|webm|mov)$/i.test(url.split("?")[0]);
+  jobs.set(jobId, {
+    url,
+    kind: "integrated",
+    status: "running",
+    progress: null,
+    path: null,
+    error: null,
+  });
+  if (direct) {
+    ensureHostPort().postMessage({
+      action: "downloadUrl",
+      jobId,
+      url,
+      destDir: "",
+      askPath: false,
+      defaultFileName,
+      kind: "combined",
+    });
+  } else {
+    const cookiesText = await readSiteCookiesText(url);
+    const baseNoExt = defaultFileName.replace(/\.[^.]+$/, "");
+    ensureHostPort().postMessage({
+      action: "download",
+      jobId,
+      url,
+      selection: { kind: "combined", height: 0 },
+      destDir: "",
+      askPath: false,
+      filenameTemplate: baseNoExt ? `${baseNoExt.replace(/%/g, "%%")}.%(ext)s` : "",
+      cookiesText,
+    });
+  }
+  try {
+    chrome.action.setBadgeText({ text: "↓", tabId });
+    chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });
+  } catch {}
+  return true;
+}
+
 // relayTtJobMessage forwards a host-originated job event to the
 // originating tab's content script for grab-button-initiated
 // downloads. The content script listens on chrome.runtime.onMessage
@@ -488,38 +627,48 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, error: "no-tab" });
       return false;
     }
-    // Best-effort popup reopen. Chrome's action popup dismisses on
-    // click-away and subsequent openPopup() calls can fail if the
-    // user-activation state has shifted — but the badge below is the
-    // reliable fallback: the user sees the new capture count on the
-    // action icon and can click to open manually.
-    try {
-      if (chrome.action?.openPopup) {
-        chrome.action.openPopup().catch((e) => {
-          dlog("openPopup failed", e?.message || e);
+    // Per-site options decide whether this button downloads immediately
+    // or stages captures into the popup gallery.
+    startIntegratedPayloadDownload(tabId, msg.payload || {})
+      .then((downloaded) => {
+        if (downloaded) {
+          sendResponse({ ok: true, downloaded: true });
+          return null;
+        }
+        return appendCapture(tabId, msg.payload || {});
+      })
+      .then((r) => {
+        if (!r) return;
+        dlog("capture:add stored", {
+          tabId,
+          count: r.count,
+          added: r.added,
+          url: (msg.payload?.url || "").slice(0, 80),
         });
-      }
-    } catch (e) {
-      dlog("openPopup threw", e?.message || e);
-    }
-    appendCapture(tabId, msg.payload || {}).then((r) => {
-      dlog("capture:add stored", {
-        tabId,
-        count: r.count,
-        added: r.added,
-        url: (msg.payload?.url || "").slice(0, 80),
+        // Always paint a badge too — this is a reliable fallback when
+        // openPopup fails (popup just dismissed, activation consumed,
+        // etc.). The user sees the capture count on the action icon
+        // and knows to click it. Badge clears when the popup reads
+        // the list.
+        try {
+          if (chrome.action?.openPopup) {
+            chrome.action.openPopup().catch((e) => {
+              dlog("openPopup failed", e?.message || e);
+            });
+          }
+        } catch (e) {
+          dlog("openPopup threw", e?.message || e);
+        }
+        try {
+          chrome.action.setBadgeText({ text: String(r.count || 0), tabId });
+          chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });
+        } catch {}
+        sendResponse({ ok: true, ...r });
+      })
+      .catch((err) => {
+        dlog("capture:add integrated err", err?.message || err);
+        sendResponse({ ok: false, error: String(err?.message || err) });
       });
-      // Always paint a badge too — this is a reliable fallback when
-      // openPopup fails (popup just dismissed, activation consumed,
-      // etc.). The user sees the capture count on the action icon
-      // and knows to click it. Badge clears when the popup reads
-      // the list.
-      try {
-        chrome.action.setBadgeText({ text: String(r.count || 0), tabId });
-        chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });
-      } catch {}
-      sendResponse({ ok: true, ...r });
-    });
     return true; // async sendResponse
   }
   if (msg.type === "capture:list") {
@@ -573,6 +722,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.storage.session
       .set({ [key]: { url, ts: Date.now(), currentTime } })
       .then(async () => {
+        const setting = await readIntegratedSetting(url);
+        if (setting.behavior === "download") {
+          await startIntegratedPayloadDownload(tabId, {
+            url,
+            title: "",
+            author: "",
+            ext: "mp4",
+            mime: "video/mp4",
+          });
+          sendResponse({ ok: true, downloaded: true });
+          return;
+        }
         try {
           chrome.action.openPopup?.().catch(() => {});
         } catch {}
@@ -1008,6 +1169,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // scraping. Same for stories-to-stories (same bucket section).
 const lastSectionByTab = new Map();
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab?.active && tab.url) {
+    prefetchActiveTabMedia(tabId, tab.url);
+  }
   if (!changeInfo.url) return;
   try {
     const h = new URL(changeInfo.url).hostname;
@@ -1021,6 +1185,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (prevSection !== undefined && prevSection !== nextSection) {
     clearCaptures(tabId).catch(() => {});
   }
+});
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab?.url) prefetchActiveTabMedia(tabId, tab.url);
+  } catch {}
 });
 // Drop the section record when the tab is gone.
 chrome.tabs.onRemoved.addListener((tabId) => {

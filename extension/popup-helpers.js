@@ -80,7 +80,7 @@ export function resolveFrameTimestampPrefill({ savedSeconds, fallbackSeconds, du
 
 export function thumbnailPreviewState(thumbnailUrl, isYoutube, open = false) {
   const src = String(thumbnailUrl || "").trim();
-  if (!isYoutube || !src) {
+  if (!src) {
     return { hidden: true, open: false, src: "" };
   }
   return { hidden: false, open: !!open, src };

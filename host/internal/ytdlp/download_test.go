@@ -148,3 +148,14 @@ func TestBuildArgsIncludeSubs(t *testing.T) {
 		t.Errorf("IncludeSubs=true must enable --write-auto-subs: %v", args)
 	}
 }
+
+func TestBuildArgsRangeDownload(t *testing.T) {
+	args := BuildArgs(Selection{Kind: "combined", RangeStart: 12.5, RangeEnd: 25}, "C:\\tmp", "", "https://youtu.be/x", "", "")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--download-sections *12.500-25.000") {
+		t.Errorf("range selection must emit yt-dlp section args: %v", args)
+	}
+	if !strings.Contains(joined, "--force-keyframes-at-cuts") {
+		t.Errorf("range selection should force keyframes at cuts: %v", args)
+	}
+}

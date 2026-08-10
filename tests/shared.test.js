@@ -17,6 +17,9 @@ import {
   sanitizeLooseFilename,
   normalizeHandle,
   pickHandleText,
+  DEFAULT_FILENAME_SCHEME,
+  applyFilenameTemplate,
+  sourceTokenFromUrl,
   WIN_RESERVED,
   isKnownHost,
   SUPPORTED_HOSTS,
@@ -109,7 +112,7 @@ describe("extensionFromUrl", () => {
 
 describe("sanitizeFilenameSegment", () => {
   it("replaces Windows-reserved characters with underscore", () => {
-    expect(sanitizeFilenameSegment("a/b\\c:d*e?f\"g<h>i|j")).toBe("a_b_c_d_e_f_g_h_i_j");
+    expect(sanitizeFilenameSegment('a/b\\c:d*e?f"g<h>i|j')).toBe("a_b_c_d_e_f_g_h_i_j");
   });
 
   it("drops control characters entirely", () => {
@@ -150,16 +153,39 @@ describe("resolveFilenameMode", () => {
   });
   it("falls back to imageFilenameMode last (gallery wins over image)", () => {
     expect(
-      resolveFilenameMode({ imageFilenameMode: "title", galleryFilenameMode: "original" })
+      resolveFilenameMode({ imageFilenameMode: "title", galleryFilenameMode: "original" }),
     ).toBe("original");
     expect(resolveFilenameMode({ imageFilenameMode: "original" })).toBe("original");
   });
   it("returns the modern default when nothing is set", () => {
-    expect(resolveFilenameMode({})).toBe("uploader-title");
+    expect(resolveFilenameMode({})).toBe(DEFAULT_FILENAME_SCHEME);
   });
-  it("translates the legacy 'default' sentinel to 'uploader-title'", () => {
-    expect(resolveFilenameMode({ filenameMode: "default" })).toBe("uploader-title");
-    expect(resolveFilenameMode({ galleryFilenameMode: "default" })).toBe("uploader-title");
+  it("translates the legacy 'default' sentinel to the modern default", () => {
+    expect(resolveFilenameMode({ filenameMode: "default" })).toBe(DEFAULT_FILENAME_SCHEME);
+    expect(resolveFilenameMode({ galleryFilenameMode: "default" })).toBe(DEFAULT_FILENAME_SCHEME);
+  });
+});
+
+describe("filename source tokens", () => {
+  it("uses x.com for Twitter/X URLs", () => {
+    expect(sourceTokenFromUrl("https://twitter.com/user/status/1")).toBe("x.com");
+    expect(sourceTokenFromUrl("https://x.com/user/status/1")).toBe("x.com");
+  });
+
+  it("uses the site name without .com for other .com hosts", () => {
+    expect(sourceTokenFromUrl("https://www.reddit.com/r/test")).toBe("reddit");
+    expect(sourceTokenFromUrl("https://facebook.com/watch/1")).toBe("facebook");
+  });
+
+  it("applies title, poster, source, and index tokens", () => {
+    expect(
+      applyFilenameTemplate("[Title] -- [@Poster] -- [Source] -- [Index]", {
+        title: "Post",
+        poster: "@user",
+        source: "x.com",
+        index: "02",
+      }),
+    ).toBe("Post -- @user -- x.com -- 02");
   });
 });
 
@@ -303,7 +329,7 @@ describe("migrateFilenameSettings", () => {
   });
 
   it("seeds filenameMode on a fresh install (empty settings)", () => {
-    expect(migrateFilenameSettings({})).toEqual({ filenameMode: "uploader-title" });
+    expect(migrateFilenameSettings({})).toEqual({ filenameMode: DEFAULT_FILENAME_SCHEME });
   });
 
   it("preserves unrelated settings keys", () => {

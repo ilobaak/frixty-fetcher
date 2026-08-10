@@ -54,8 +54,11 @@
             <label class="card-control">
               <span>New folder name</span>
               <select class="dl-folder-mode">
-                <option value="uploader-title">[@Poster] - [Title]</option>
-                <option value="title-uploader">[Title] - [@Poster]</option>
+                <option value="title-uploader-source" selected>
+                  [Title] -- [@Poster] -- [Source]
+                </option>
+                <option value="title-uploader">[Title] -- [@Poster]</option>
+                <option value="uploader-title">[@Poster] -- [Title]</option>
                 <option value="title">[Title]</option>
                 <option value="set">Set folder name</option>
               </select>
@@ -90,8 +93,11 @@
           <label class="card-control" id="video-filename-group">
             <span>Filename</span>
             <select id="video-filename-mode">
-              <option value="uploader-title" selected>[@Poster] - [Title]</option>
-              <option value="title-uploader">[Title] - [@Poster]</option>
+              <option value="title-uploader-source" selected>
+                [Title] -- [@Poster] -- [Source]
+              </option>
+              <option value="title-uploader">[Title] -- [@Poster]</option>
+              <option value="uploader-title">[@Poster] -- [Title]</option>
               <option value="title">[Title]</option>
               <option value="set">User set</option>
             </select>
@@ -156,6 +162,36 @@
               </section>
             </div>
           </details>
+          <details class="video-range-actions" id="video-range-actions" hidden>
+            <summary>Video range download</summary>
+            <div class="youtube-image-actions-body">
+              <div class="frame-preview" id="range-frame-preview" hidden>
+                <img id="range-frame-preview-img" alt="" />
+                <div class="frame-preview-status" id="range-frame-preview-status">
+                  Preview unavailable
+                </div>
+              </div>
+              <div class="timestamp-row">
+                <input id="range-start-slider" type="range" min="0" max="0" step="1" value="0" />
+                <input id="range-start-time" type="text" value="0:00" aria-label="Range start" />
+              </div>
+              <div class="timestamp-row">
+                <input id="range-end-slider" type="range" min="0" max="0" step="1" value="0" />
+                <input id="range-end-time" type="text" value="0:00" aria-label="Range end" />
+              </div>
+              <div class="btn-row">
+                <button id="range-start-current" type="button" class="secondary">
+                  Set start to current
+                </button>
+                <button id="range-end-current" type="button" class="secondary">
+                  Set end to current
+                </button>
+              </div>
+              <button id="range-download" type="button" class="primary">
+                Download selected range
+              </button>
+            </div>
+          </details>
         </div>
       </div>
       <p class="muted" id="save-mode-hint" hidden>—</p>
@@ -183,8 +219,11 @@
           <label class="card-control">
             <span>Filename</span>
             <select id="image-filename-mode">
-              <option value="uploader-title" selected>[@Poster] - [Title]</option>
-              <option value="title-uploader">[Title] - [@Poster]</option>
+              <option value="title-uploader-source" selected>
+                [Title] -- [@Poster] -- [Source]
+              </option>
+              <option value="title-uploader">[Title] -- [@Poster]</option>
+              <option value="uploader-title">[@Poster] -- [Title]</option>
               <option value="title">[Title]</option>
               <option value="original">Original filename</option>
               <option value="setEach">User set</option>

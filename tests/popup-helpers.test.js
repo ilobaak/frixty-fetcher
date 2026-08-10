@@ -64,7 +64,9 @@ describe("timestamp helpers", () => {
   });
 
   it("prefers a valid saved frame timestamp over the auto-fetch timestamp", () => {
-    expect(resolveFrameTimestampPrefill({ savedSeconds: 12.5, fallbackSeconds: 42, duration: 120 })).toEqual({
+    expect(
+      resolveFrameTimestampPrefill({ savedSeconds: 12.5, fallbackSeconds: 42, duration: 120 }),
+    ).toEqual({
       seconds: 12.5,
       label: "0:12.500",
       sliderValue: "12",
@@ -72,7 +74,9 @@ describe("timestamp helpers", () => {
   });
 
   it("falls back when the saved frame timestamp is invalid for the video", () => {
-    expect(resolveFrameTimestampPrefill({ savedSeconds: 150, fallbackSeconds: 42, duration: 120 })).toEqual({
+    expect(
+      resolveFrameTimestampPrefill({ savedSeconds: 150, fallbackSeconds: 42, duration: 120 }),
+    ).toEqual({
       seconds: 42,
       label: "0:42",
       sliderValue: "42",
@@ -102,8 +106,8 @@ describe("thumbnail preview helpers", () => {
     });
   });
 
-  it("hides the thumbnail preview outside YouTube or without a thumbnail", () => {
+  it("hides the thumbnail preview only without a thumbnail", () => {
     expect(thumbnailPreviewState("", true).hidden).toBe(true);
-    expect(thumbnailPreviewState("https://example.test/thumb.jpg", false).hidden).toBe(true);
+    expect(thumbnailPreviewState("https://example.test/thumb.jpg", false).hidden).toBe(false);
   });
 });

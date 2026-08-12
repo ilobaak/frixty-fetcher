@@ -223,9 +223,10 @@ let autoFetchFrameSeconds = null;
 let framePreviewTimer = null;
 let framePreviewReqId = null;
 let framePreviewLastKey = "";
-let rangePreviewTimer = null;
-let rangePreviewReqId = null;
-let rangePreviewLastKey = "";
+const rangePreviewState = {
+  start: { timer: null, reqId: null, lastKey: "" },
+  end: { timer: null, reqId: null, lastKey: "" },
+};
 let currentTitle = "";
 let currentUploader = "";
 let currentUploaderId = "";
@@ -505,11 +506,16 @@ function onMessage(msg) {
           framePreviewReqId = null;
           break;
         }
-        if (msg.reqId && msg.reqId === rangePreviewReqId) {
-          renderRangePreviewError("Preview unavailable");
-          rangePreviewReqId = null;
-          break;
+        let handledRangePreviewError = false;
+        for (const side of ["start", "end"]) {
+          if (msg.reqId && msg.reqId === rangePreviewState[side].reqId) {
+            renderRangePreviewError(side, "Preview unavailable");
+            rangePreviewState[side].reqId = null;
+            handledRangePreviewError = true;
+            break;
+          }
         }
+        if (handledRangePreviewError) break;
         dlog("host error (final)", { code: msg.code, message: msg.message });
         dispatchError(msg);
       }
@@ -1538,45 +1544,61 @@ function wireVideoRangeActions() {
   }
   if (startInput) startInput.value = "0:00";
   if (endInput) endInput.value = formatTimestamp(currentDuration || max);
-  const syncPreview = () => {
-    const start = validateTimestamp(startInput.value, currentDuration);
-    if (start.ok) scheduleRangePreview(start.seconds);
+  const clampRange = (changed) => {
+    const startSeconds = Number(startSlider.value) || 0;
+    const endSeconds = Number(endSlider.value) || 0;
+    if (startSeconds > endSeconds) {
+      if (changed === "start") endSlider.value = String(startSeconds);
+      else startSlider.value = String(endSeconds);
+    }
   };
-  const syncFromSlider = (slider, input) => {
+  const syncFromSlider = (side, slider, input) => {
+    clampRange(side);
     const seconds = Number(slider.value) || 0;
     input.value = formatTimestamp(seconds);
-    syncPreview();
+    scheduleRangePreview(side, seconds);
   };
-  startSlider.oninput = () => syncFromSlider(startSlider, startInput);
-  endSlider.oninput = () => syncFromSlider(endSlider, endInput);
+  startSlider.oninput = () => syncFromSlider("start", startSlider, startInput);
+  endSlider.oninput = () => syncFromSlider("end", endSlider, endInput);
   startInput.onchange = () => {
     const v = validateTimestamp(startInput.value, currentDuration);
     if (v.ok) {
       startSlider.value = String(Math.floor(v.seconds));
+      clampRange("start");
       startInput.value = formatTimestamp(v.seconds);
-      syncPreview();
+      if (Number(endSlider.value) < v.seconds) endInput.value = formatTimestamp(v.seconds);
+      scheduleRangePreview("start", v.seconds);
     }
   };
   endInput.onchange = () => {
     const v = validateTimestamp(endInput.value, currentDuration);
     if (v.ok) {
       endSlider.value = String(Math.floor(v.seconds));
+      clampRange("end");
       endInput.value = formatTimestamp(v.seconds);
+      if (Number(startSlider.value) > v.seconds) startInput.value = formatTimestamp(v.seconds);
+      scheduleRangePreview("end", v.seconds);
     }
   };
   el("range-start-current").onclick = async () => {
     const selected = frameTimestampSelection(await readCurrentVideoSeconds(), currentDuration);
     startSlider.value = selected.sliderValue;
+    clampRange("start");
     startInput.value = selected.label;
-    scheduleRangePreview(selected.seconds, { immediate: true });
+    if (Number(endSlider.value) < selected.seconds) endInput.value = selected.label;
+    scheduleRangePreview("start", selected.seconds, { immediate: true });
   };
   el("range-end-current").onclick = async () => {
     const selected = frameTimestampSelection(await readCurrentVideoSeconds(), currentDuration);
     endSlider.value = selected.sliderValue;
+    clampRange("end");
     endInput.value = selected.label;
+    if (Number(startSlider.value) > selected.seconds) startInput.value = selected.label;
+    scheduleRangePreview("end", selected.seconds, { immediate: true });
   };
   el("range-download").onclick = startRangeDownload;
-  scheduleRangePreview(0, { immediate: true });
+  scheduleRangePreview("start", 0, { immediate: true });
+  scheduleRangePreview("end", currentDuration || max, { immediate: true });
 }
 
 async function readCurrentVideoSeconds() {
@@ -1679,47 +1701,56 @@ function handleFramePreview(msg) {
   status.textContent = "";
 }
 
-function renderRangePreviewLoading() {
-  const box = el("range-frame-preview");
-  const img = el("range-frame-preview-img");
-  const status = el("range-frame-preview-status");
+function rangePreviewNodes(side) {
+  return {
+    box: el(`range-${side}-preview`),
+    img: el(`range-${side}-preview-img`),
+    status: el(`range-${side}-preview-status`),
+  };
+}
+
+function renderRangePreviewLoading(side) {
+  const { box, img, status } = rangePreviewNodes(side);
   if (!box || !img || !status) return;
   box.hidden = false;
   status.hidden = false;
-  status.textContent = "Loading range preview...";
+  status.textContent = `Loading ${side} preview...`;
   if (!img.src) img.removeAttribute("src");
 }
 
-function renderRangePreviewError(message) {
-  const box = el("range-frame-preview");
-  const status = el("range-frame-preview-status");
+function renderRangePreviewError(side, message) {
+  const { box, status } = rangePreviewNodes(side);
   if (!box || !status) return;
   box.hidden = false;
   status.hidden = false;
   status.textContent = message;
 }
 
-function scheduleRangePreview(seconds, { immediate = false } = {}) {
+function scheduleRangePreview(side, seconds, { immediate = false } = {}) {
   if (!tabUrl) return;
+  const state = rangePreviewState[side];
+  if (!state) return;
   const v = validateTimestamp(String(seconds), currentDuration);
   if (!v.ok) return;
   const key = framePreviewKey(tabUrl, v.seconds);
-  if (key === rangePreviewLastKey) return;
-  rangePreviewLastKey = key;
-  if (rangePreviewTimer) clearTimeout(rangePreviewTimer);
-  renderRangePreviewLoading();
-  const run = () => requestRangePreview(v.seconds);
+  if (key === state.lastKey) return;
+  state.lastKey = key;
+  if (state.timer) clearTimeout(state.timer);
+  renderRangePreviewLoading(side);
+  const run = () => requestRangePreview(side, v.seconds);
   if (immediate) run();
-  else rangePreviewTimer = setTimeout(run, 450);
+  else state.timer = setTimeout(run, 450);
 }
 
-function requestRangePreview(seconds) {
-  rangePreviewTimer = null;
-  rangePreviewReqId = crypto.randomUUID();
-  logFetcher("popup", "range-preview:send", { url: tabUrl, timestamp: seconds });
+function requestRangePreview(side, seconds) {
+  const state = rangePreviewState[side];
+  if (!state) return;
+  state.timer = null;
+  state.reqId = crypto.randomUUID();
+  logFetcher("popup", "range-preview:send", { url: tabUrl, side, timestamp: seconds });
   port.postMessage({
     cmd: "extractFramePreview",
-    reqId: rangePreviewReqId,
+    reqId: state.reqId,
     url: tabUrl,
     timestamp: seconds,
     useCookies: effectiveUseCookies,
@@ -1727,14 +1758,13 @@ function requestRangePreview(seconds) {
 }
 
 function handleRangePreview(msg) {
-  if (!msg.reqId || msg.reqId !== rangePreviewReqId) return;
-  rangePreviewReqId = null;
-  const box = el("range-frame-preview");
-  const img = el("range-frame-preview-img");
-  const status = el("range-frame-preview-status");
+  const side = ["start", "end"].find((name) => msg.reqId && msg.reqId === rangePreviewState[name].reqId);
+  if (!side) return;
+  rangePreviewState[side].reqId = null;
+  const { box, img, status } = rangePreviewNodes(side);
   if (!box || !img || !status) return;
   if (!msg.dataUrl) {
-    renderRangePreviewError("Preview unavailable");
+    renderRangePreviewError(side, "Preview unavailable");
     return;
   }
   box.hidden = false;

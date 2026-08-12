@@ -374,6 +374,82 @@ select {
   border: 1px solid var(--border);
   border-radius: 3px;
 }
+.video-range-actions-body {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+}
+.range-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.range-preview-pane {
+  min-width: 0;
+}
+.range-preview-label {
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #555;
+}
+.range-control-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 76px;
+  gap: 6px;
+  align-items: center;
+}
+.range-control-row input[type="text"] {
+  min-width: 0;
+  box-sizing: border-box;
+  font:
+    11px ui-monospace,
+    monospace;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.dual-range {
+  position: relative;
+  height: 26px;
+  min-width: 0;
+}
+.dual-range::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d7dde5;
+}
+.dual-range input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+}
+.dual-range input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+.dual-range input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
 .media-card .card-position {
   position: absolute;
   top: 6px;
@@ -410,7 +486,7 @@ select {
   padding: 0;
 }
 .media-card .card-save {
-  right: 30px;
+  right: 78px;
   color: #1260a8;
 }
 .media-card .card-remove:hover {
@@ -424,7 +500,7 @@ select {
 /* When X is present (capture list), push the idx/total badge
          to the left so both fit. */
 .media-card.has-remove .card-position {
-  right: 54px;
+  right: 30px;
 }
 /* Dismiss × for single-item pickers (video-picker / image-picker).
          Always visible so the user can clear a wrong-result card

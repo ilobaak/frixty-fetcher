@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const popupHtml = readFileSync(new URL("../extension/popup.html", import.meta.url), "utf8");
 const optionsHtml = readFileSync(new URL("../extension/options.html", import.meta.url), "utf8");
+const popupCss = readFileSync(new URL("../extension/popup.css", import.meta.url), "utf8");
 
 describe("popup markup", () => {
   it("offers title-poster naming and updated download control labels", () => {
@@ -52,11 +53,25 @@ describe("popup markup", () => {
   it("offers a video range download section", () => {
     expect(popupHtml).toContain('class="video-range-actions" id="video-range-actions"');
     expect(popupHtml).toContain("<summary>Video range download</summary>");
+    expect(popupHtml).toContain("video-range-actions-body");
+    expect(popupHtml).toContain("range-preview-grid");
+    expect(popupHtml).toContain('id="range-start-preview"');
+    expect(popupHtml).toContain('id="range-end-preview"');
+    expect(popupHtml).toContain('class="dual-range" id="range-dual-slider"');
     expect(popupHtml).toContain('id="range-start-slider"');
     expect(popupHtml).toContain('id="range-end-slider"');
-    expect(popupHtml).toContain("Set start to current");
-    expect(popupHtml).toContain("Set end to current");
+    expect(popupHtml).toContain("Set start to current video time");
+    expect(popupHtml).toContain("Set end to current video time");
     expect(popupHtml).toContain("Download selected range");
+    expect(popupCss).toContain(".range-preview-grid");
+    expect(popupCss).toContain(".dual-range::before");
+  });
+
+  it("places the gallery card save button left of the index badge", () => {
+    expect(popupCss).toContain(".media-card .card-save");
+    expect(popupCss).toContain("right: 78px");
+    expect(popupCss).toContain(".media-card.has-remove .card-position");
+    expect(popupCss).toContain("right: 30px");
   });
 
   it("adds options for integrated buttons and custom filename schemes", () => {

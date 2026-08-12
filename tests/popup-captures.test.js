@@ -46,6 +46,14 @@ describe("capture-list downloads", () => {
     expect(body).toContain('mime.startsWith("image/")');
   });
 
+  it("adds a per-card gallery save icon button", () => {
+    const body = functionBody("renderGalleryItems");
+    expect(body).toContain('saveBtn.className = "card-save"');
+    expect(body).toContain('saveBtn.title = "Download item"');
+    expect(body).toContain("startGallerySingleItem");
+    expect(body).toContain("startCaptureListDownload");
+  });
+
   it("clears active job before re-enabling selected gallery downloads", () => {
     for (const name of ["inlineRenderDone", "inlineRenderError"]) {
       const body = functionBody(name);

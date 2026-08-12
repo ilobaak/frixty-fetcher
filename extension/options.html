@@ -131,38 +131,10 @@
       Nothing leaves your machine.
     </p>
 
-    <h2>Download filenames</h2>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="title-uploader-source" />
-      [Title] -- [@Poster] -- [Source] (<code>Title -- @user -- x.com 01.ext</code>,
-      <code>Title -- @user -- x.com 02.ext</code>, ... for galleries)
-    </label>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="title-uploader" />
-      [Title] -- [@Poster] (<code>Title -- @user 01.ext</code>, <code>Title -- @user 02.ext</code>,
-      ... for galleries)
-    </label>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="uploader-title" />
-      [@Poster] -- [Title] (<code>@user -- Title 01.ext</code>, <code>@user -- Title 02.ext</code>,
-      ... for galleries)
-    </label>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="title" />
-      [Title] (<code>Title 01.ext</code>, <code>Title 02.ext</code>, ... for galleries)
-    </label>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="sequential" />
-      [Index] - galleries only (<code>01.jpg</code>, <code>02.jpg</code>, ...); falls back to
-      [Title] -- [@Poster] -- [Source] for single-image downloads
-    </label>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="original" />
-      Original filename (the URL's basename - usually a hash like <code>abc123.jpg</code>)
-    </label>
-    <label class="radio-row">
-      <input type="radio" name="filename-mode" value="setEach" />
-      User set (always open the Save As dialog)
+    <h2>Default Download Filenames</h2>
+    <label class="card-control">
+      <span>Default scheme</span>
+      <select id="filename-mode"></select>
     </label>
     <p class="muted" style="margin-top: 4px">
       Default for new downloads; the popup's per-item dropdowns pre-fill from here and remember your
@@ -194,11 +166,48 @@
       />
       <button id="add-custom-scheme" type="button">Add scheme</button>
     </div>
-    <p class="muted token-list">
-      Tokens: <code>[Title]</code>, <code>[@Poster]</code>, <code>[Source]</code>,
-      <code>[Index]</code>, <code>[Start]</code>, <code>[End]</code>, <code>[Start Time]</code>,
-      <code>[End Time]</code>.
-    </p>
+    <div class="token-list">
+      <div>
+        <code>[Title]</code><span>Media or post title, for example <code>Title</code>.</span>
+      </div>
+      <div>
+        <code>[@Poster]</code
+        ><span>Uploader, channel, or post author, for example <code>@user</code>.</span>
+      </div>
+      <div>
+        <code>[Source]</code
+        ><span
+          >Site token, for example <code>x.com</code>, <code>youtube</code>, or
+          <code>reddit</code>.</span
+        >
+      </div>
+      <div>
+        <code>[Index]</code
+        ><span>Gallery item number, for example <code>01</code>, <code>02</code>.</span>
+      </div>
+      <div>
+        <code>[Start]</code
+        ><span>Video range start time for filenames, for example <code>0-15</code>.</span>
+      </div>
+      <div>
+        <code>[End]</code
+        ><span>Video range end time for filenames, for example <code>1-30</code>.</span>
+      </div>
+      <div>
+        <code>[Start Time]</code><span>Alias for <code>[Start]</code>.</span>
+      </div>
+      <div>
+        <code>[End Time]</code><span>Alias for <code>[End]</code>.</span>
+      </div>
+      <div>
+        <code>Examples</code
+        ><span
+          ><code>[Title] -- [@Poster] -- [Source]</code> becomes
+          <code>Title -- @user -- x.com</code>. Gallery downloads append the item index when
+          needed.</span
+        >
+      </div>
+    </div>
 
     <script type="module" src="options.js"></script>
   </body>

@@ -30,6 +30,7 @@ const hostVersionEl = el("host-version");
 const checkHostUpdatesBtn = el("check-host-updates");
 const hostUpdateResultEl = el("host-update-result");
 const integratedCategoriesEl = el("integrated-categories");
+const filenameModeEl = el("filename-mode");
 const rangeFilenameModeEl = el("range-filename-mode");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
@@ -203,8 +204,7 @@ async function load() {
 
   const modeRadio = document.querySelector(`input[name="saveMode"][value="${current.saveMode}"]`);
   if (modeRadio) modeRadio.checked = true;
-  const fnRadio = document.querySelector(`input[name="filename-mode"][value="${current.filenameMode}"]`);
-  if (fnRadio) fnRadio.checked = true;
+  renderFilenameMode();
   renderRangeFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
@@ -256,7 +256,7 @@ async function save() {
     showError("Pick a folder before choosing “Save to:”.");
     return;
   }
-  current.filenameMode = document.querySelector('input[name="filename-mode"]:checked')?.value ?? DEFAULT_FILENAME_SCHEME;
+  current.filenameMode = filenameModeEl?.value || DEFAULT_FILENAME_SCHEME;
   current.rangeFilenameMode = rangeFilenameModeEl?.value || DEFAULT_FILENAME_SCHEME;
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
@@ -285,6 +285,19 @@ async function save() {
     },
   });
   flashSaved();
+}
+
+function renderFilenameMode() {
+  if (!filenameModeEl) return;
+  const previous = filenameModeEl.value || current.filenameMode;
+  filenameModeEl.innerHTML = "";
+  for (const opt of filenameSchemeOptions(current.customFilenameSchemes)) {
+    filenameModeEl.add(new Option(opt.label, opt.value));
+  }
+  filenameModeEl.value = [...filenameModeEl.options].some((o) => o.value === previous)
+    ? previous
+    : DEFAULT_FILENAME_SCHEME;
+  current.filenameMode = filenameModeEl.value;
 }
 
 function renderRangeFilenameMode() {
@@ -328,8 +341,8 @@ function renderIntegratedCategories() {
 
     const behavior = document.createElement("select");
     behavior.className = "integrated-behavior";
-    behavior.add(new Option("Download media", "download"));
-    behavior.add(new Option("Fetch into extension", "fetch"));
+    behavior.add(new Option("Downloads media", "download"));
+    behavior.add(new Option("Fetches to extension", "fetch"));
     behavior.value = settings.behavior || "download";
 
     const scheme = document.createElement("select");
@@ -341,12 +354,17 @@ function renderIntegratedCategories() {
     scheme.value = settings.filenameMode || DEFAULT_FILENAME_SCHEME;
 
     const behaviorLabel = document.createElement("label");
-    behaviorLabel.className = "card-control";
-    behaviorLabel.append(document.createElement("span"), behavior);
-    behaviorLabel.firstElementChild.textContent = "Button action";
+    behaviorLabel.className = "card-control integrated-control";
+    const behaviorText = document.createElement("span");
+    behaviorText.className = "integrated-action-label";
+    const icon = document.createElement("span");
+    icon.className = "integrated-button-image";
+    icon.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    behaviorText.append(icon, document.createTextNode("Button action"));
+    behaviorLabel.append(behaviorText, behavior);
 
     const schemeLabel = document.createElement("label");
-    schemeLabel.className = "card-control";
+    schemeLabel.className = "card-control integrated-control";
     schemeLabel.append(document.createElement("span"), scheme);
     schemeLabel.firstElementChild.textContent = "Filename";
 
@@ -387,6 +405,7 @@ function renderCustomSchemes() {
     remove.textContent = "Remove";
     remove.onclick = () => {
       current.customFilenameSchemes = current.customFilenameSchemes.filter((s) => s.id !== scheme.id);
+      renderFilenameMode();
       renderRangeFilenameMode();
       renderCustomSchemes();
       renderIntegratedCategories();
@@ -411,6 +430,7 @@ function addCustomScheme() {
   customSchemeNameEl.value = "";
   customSchemeTemplateEl.value = "";
   hideError();
+  renderFilenameMode();
   renderRangeFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();

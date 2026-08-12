@@ -2,7 +2,7 @@ body {
   font:
     14px system-ui,
     sans-serif;
-  max-width: 640px;
+  max-width: 760px;
   margin: 40px auto;
   padding: 0 20px;
   color: #222;
@@ -93,11 +93,67 @@ button:disabled {
 }
 .card-control select {
   min-width: 0;
+  width: 100%;
   padding: 5px 8px;
   font: inherit;
 }
+.integrated-category {
+  margin-left: 0;
+  display: grid;
+  grid-template-columns: 96px minmax(230px, 0.85fr) minmax(300px, 1.15fr);
+  gap: 10px;
+  align-items: center;
+}
+.integrated-category h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+}
+.integrated-category .card-control {
+  margin: 0;
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+.integrated-action-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.integrated-button-image {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border: 1px solid #1a73e8;
+  border-radius: 4px;
+  color: #1a73e8;
+  background: #f4f8ff;
+}
+.integrated-button-image svg {
+  width: 14px;
+  height: 14px;
+}
+.integrated-behavior {
+  min-width: 170px;
+}
+.integrated-filename-mode {
+  min-width: 270px;
+}
+.token-list {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin-top: 8px;
+  color: #555;
+  font-size: 13px;
+}
+.token-list div {
+  display: contents;
+}
 .token-list code {
   white-space: nowrap;
+  color: #333;
 }
 .row {
   display: flex;

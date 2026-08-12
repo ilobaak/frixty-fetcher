@@ -425,15 +425,17 @@ select {
   top: 12px;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--accent) 0%,
-    var(--accent) var(--range-start-pct),
-    var(--brand) var(--range-start-pct),
-    var(--brand) var(--range-end-pct),
-    var(--accent) var(--range-end-pct),
-    var(--accent) 100%
-  );
+  background: #d7e5f6;
+}
+.dual-range-fill {
+  position: absolute;
+  left: var(--range-start-pct);
+  right: calc(100% - var(--range-end-pct));
+  top: 12px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--brand);
+  pointer-events: none;
 }
 .dual-range input[type="range"] {
   position: absolute;
@@ -443,6 +445,7 @@ select {
   background: transparent;
   pointer-events: none;
   appearance: none;
+  z-index: 1;
   accent-color: var(--brand);
 }
 .dual-range input[type="range"]::-webkit-slider-runnable-track {

@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const popupSource = readFileSync(resolve(here, "../extension/popup.js"), "utf8");
+const optionsSource = readFileSync(resolve(here, "../extension/options.js"), "utf8");
 
 function functionBody(name) {
   const start = popupSource.indexOf(`function ${name}(`);
@@ -109,5 +110,15 @@ describe("popup naming modes", () => {
   it("implements title-poster folder names", () => {
     expect(functionBody("currentAlbumName")).toContain('mode === "title-uploader"');
     expect(functionBody("defaultAlbumName")).toContain('mode === "title-uploader"');
+  });
+});
+
+describe("options filename controls", () => {
+  it("renders filename defaults and integrated rows as dropdown controls", () => {
+    expect(optionsSource).toContain('const filenameModeEl = el("filename-mode")');
+    expect(optionsSource).toContain("function renderFilenameMode()");
+    expect(optionsSource).toContain('new Option("Downloads media", "download")');
+    expect(optionsSource).toContain('new Option("Fetches to extension", "fetch")');
+    expect(optionsSource).toContain("integrated-button-image");
   });
 });

@@ -15,7 +15,8 @@ describe("popup markup", () => {
     expect(popupHtml).toContain("[Title] -- [@Poster] -- [Source]");
     expect(popupHtml).toContain('<option value="title-uploader">[Title] -- [@Poster]</option>');
     expect(popupHtml).toContain('<option value="uploader-title">[@Poster] -- [Title]</option>');
-    expect(optionsHtml).toContain('name="filename-mode" value="title-uploader"');
+    expect(optionsHtml).toContain("<h2>Default Download Filenames</h2>");
+    expect(optionsHtml).toContain('id="filename-mode"');
     expect(optionsHtml).toContain("[Title] -- [@Poster]");
     expect(optionsHtml).toContain("[Title] -- [@Poster] -- [Source]");
   });
@@ -58,6 +59,7 @@ describe("popup markup", () => {
     expect(popupHtml).toContain('id="range-start-preview"');
     expect(popupHtml).toContain('id="range-end-preview"');
     expect(popupHtml).toContain('class="dual-range" id="range-dual-slider"');
+    expect(popupHtml).toContain('class="dual-range-fill"');
     expect(popupHtml).toContain('id="range-start-slider"');
     expect(popupHtml).toContain('id="range-end-slider"');
     expect(popupHtml).toContain("Set start to current video time");
@@ -70,8 +72,10 @@ describe("popup markup", () => {
     expect(popupCss).toContain("background: var(--brand)");
     expect(popupCss).toContain("accent-color: var(--brand)");
     expect(popupCss).toContain("grid-template-columns: 54px minmax(0, 1fr) 54px");
-    expect(popupCss).toContain("linear-gradient(");
+    expect(popupCss).toContain(".dual-range-fill");
     expect(popupCss).toContain("--range-start-pct");
+    expect(popupCss).toContain("left: var(--range-start-pct)");
+    expect(popupCss).toContain("background: #d7e5f6");
   });
 
   it("places the gallery card save button left of the index badge", () => {
@@ -95,5 +99,8 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="custom-scheme-template"');
     expect(optionsHtml).toContain("[Start]");
     expect(optionsHtml).toContain("[End]");
+    expect(optionsHtml).toContain("Media or post title");
+    expect(optionsHtml).toContain("Site token");
+    expect(optionsHtml).toContain("Video range start time");
   });
 });

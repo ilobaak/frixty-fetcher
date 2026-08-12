@@ -67,7 +67,9 @@ describe("popup markup", () => {
     expect(popupCss).toContain(".dual-range::before");
     expect(popupCss).toContain(".video-range-actions > summary");
     expect(popupCss).toContain("cursor: pointer");
-    expect(popupCss).toContain("background: var(--accent)");
+    expect(popupCss).toContain("background: var(--brand)");
+    expect(popupCss).toContain("accent-color: var(--brand)");
+    expect(popupCss).toContain("grid-template-columns: 60px minmax(0, 1fr) 60px");
   });
 
   it("places the gallery card save button left of the index badge", () => {
@@ -75,6 +77,13 @@ describe("popup markup", () => {
     expect(popupCss).toContain("right: 66px");
     expect(popupCss).toContain(".media-card.has-remove .card-position");
     expect(popupCss).toContain("right: 30px");
+  });
+
+  it("adds save icon buttons to single media cards", () => {
+    expect(popupHtml).toContain('id="video-card-save"');
+    expect(popupHtml).toContain('id="image-card-save"');
+    expect(popupHtml).toContain("card-save-single");
+    expect(popupCss).toContain(".media-card .card-save-single");
   });
 
   it("adds options for integrated buttons and custom filename schemes", () => {

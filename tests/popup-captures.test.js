@@ -55,6 +55,11 @@ describe("capture-list downloads", () => {
     expect(body).toContain("startCaptureListDownload");
   });
 
+  it("wires single media card save buttons to their download handlers", () => {
+    expect(popupSource).toContain('el("video-card-save").onclick = startDownload');
+    expect(popupSource).toContain('el("image-card-save").onclick = startImageDownload');
+  });
+
   it("clears active job before re-enabling selected gallery downloads", () => {
     for (const name of ["inlineRenderDone", "inlineRenderError"]) {
       const body = functionBody(name);

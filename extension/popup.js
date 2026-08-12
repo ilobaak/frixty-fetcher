@@ -1444,6 +1444,7 @@ function handleFormats(msg) {
   void wireVideoRangeActions();
   initDownloadControls("#picker");
   el("download").addEventListener("click", startDownload);
+  el("video-card-save").onclick = startDownload;
   show("picker");
   maybeApplyPendingStatus();
 }
@@ -2143,6 +2144,7 @@ function showImagePicker(info) {
   wireImageFilenameMode(info);
   initDownloadControls("#image-picker");
   el("image-download").addEventListener("click", startImageDownload);
+  el("image-card-save").onclick = startImageDownload;
   show("image-picker");
   maybeApplyPendingStatus();
   fetchImageSize(info);

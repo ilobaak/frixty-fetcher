@@ -396,7 +396,7 @@ select {
 }
 .range-control-row {
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr) 68px;
+  grid-template-columns: 60px minmax(0, 1fr) 60px;
   gap: 6px;
   align-items: center;
 }
@@ -433,6 +433,7 @@ select {
   background: transparent;
   pointer-events: none;
   appearance: none;
+  accent-color: var(--brand);
 }
 .dual-range input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
@@ -446,7 +447,7 @@ select {
   margin-top: -5px;
   border-radius: 50%;
   border: 2px solid #fff;
-  background: var(--accent);
+  background: var(--brand);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
   cursor: pointer;
 }
@@ -460,7 +461,7 @@ select {
   height: 14px;
   border-radius: 50%;
   border: 2px solid #fff;
-  background: var(--accent);
+  background: var(--brand);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
   cursor: pointer;
 }
@@ -505,6 +506,9 @@ select {
   background: #fff;
   border: 1px solid #d7e5f6;
   z-index: 2;
+}
+.media-card .card-save-single {
+  right: 76px;
 }
 .media-card .card-remove:hover {
   background: #fce4e4;

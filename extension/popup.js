@@ -2631,7 +2631,10 @@ function renderGalleryItems(items) {
     saveBtn.className = "card-save";
     saveBtn.title = "Download item";
     saveBtn.setAttribute("aria-label", `Download ${idx + 1} of ${total}`);
-    saveBtn.textContent = "↓";
+    saveBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+      '<path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      "</svg>";
     saveBtn.addEventListener("mousedown", stop, true);
     saveBtn.addEventListener("pointerdown", stop, true);
     saveBtn.addEventListener("click", async (ev) => {

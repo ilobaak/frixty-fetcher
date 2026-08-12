@@ -65,11 +65,14 @@ describe("popup markup", () => {
     expect(popupHtml).toContain("Download selected range");
     expect(popupCss).toContain(".range-preview-grid");
     expect(popupCss).toContain(".dual-range::before");
+    expect(popupCss).toContain(".video-range-actions > summary");
+    expect(popupCss).toContain("cursor: pointer");
+    expect(popupCss).toContain("background: var(--accent)");
   });
 
   it("places the gallery card save button left of the index badge", () => {
     expect(popupCss).toContain(".media-card .card-save");
-    expect(popupCss).toContain("right: 78px");
+    expect(popupCss).toContain("right: 66px");
     expect(popupCss).toContain(".media-card.has-remove .card-position");
     expect(popupCss).toContain("right: 30px");
   });

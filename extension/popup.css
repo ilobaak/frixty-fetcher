@@ -139,7 +139,7 @@ select {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  padding-right: 44px;
+  padding-right: 100px;
 }
 .media-card .card-check {
   align-self: center;
@@ -274,13 +274,15 @@ select {
   flex: 1;
   font-weight: 400;
 }
-.youtube-image-actions {
+.youtube-image-actions,
+.video-range-actions {
   margin-top: 2px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: #fff;
 }
-.youtube-image-actions > summary {
+.youtube-image-actions > summary,
+.video-range-actions > summary {
   padding: 6px 8px;
   cursor: pointer;
   font-size: 11px;
@@ -376,8 +378,6 @@ select {
 }
 .video-range-actions-body {
   background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
   padding: 8px;
 }
 .range-preview-grid {
@@ -396,7 +396,7 @@ select {
 }
 .range-control-row {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 76px;
+  grid-template-columns: 68px minmax(0, 1fr) 68px;
   gap: 6px;
   align-items: center;
 }
@@ -423,7 +423,7 @@ select {
   top: 12px;
   height: 4px;
   border-radius: 999px;
-  background: #d7dde5;
+  background: var(--accent);
 }
 .dual-range input[type="range"] {
   position: absolute;
@@ -444,6 +444,20 @@ select {
   width: 14px;
   height: 14px;
   margin-top: -5px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}
+.dual-range input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+.dual-range input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid #fff;
   background: var(--accent);
@@ -486,8 +500,11 @@ select {
   padding: 0;
 }
 .media-card .card-save {
-  right: 78px;
+  right: 66px;
   color: #1260a8;
+  background: #fff;
+  border: 1px solid #d7e5f6;
+  z-index: 2;
 }
 .media-card .card-remove:hover {
   background: #fce4e4;
@@ -501,6 +518,7 @@ select {
          to the left so both fit. */
 .media-card.has-remove .card-position {
   right: 30px;
+  z-index: 2;
 }
 /* Dismiss × for single-item pickers (video-picker / image-picker).
          Always visible so the user can clear a wrong-result card

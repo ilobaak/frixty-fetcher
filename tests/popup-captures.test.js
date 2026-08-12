@@ -50,6 +50,7 @@ describe("capture-list downloads", () => {
     const body = functionBody("renderGalleryItems");
     expect(body).toContain('saveBtn.className = "card-save"');
     expect(body).toContain('saveBtn.title = "Download item"');
+    expect(body).toContain("<svg");
     expect(body).toContain("startGallerySingleItem");
     expect(body).toContain("startCaptureListDownload");
   });

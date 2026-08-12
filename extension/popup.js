@@ -34,6 +34,7 @@ import {
   extensionFromUrl,
   sanitizeFilenameSegment,
   resolveFilenameMode,
+  resolveRangeFilenameMode,
   migrateFilenameSettings,
   DEFAULT_FILENAME_SCHEME,
   applyFilenameTemplate,
@@ -54,6 +55,7 @@ import {
   framePreviewKey,
   frameTimestampFilenameSuffix,
   frameTimestampSelection,
+  rangePreviewTimestamp,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
   validateTimestamp,
@@ -250,6 +252,7 @@ const saveSettings = {
   // guarantees unique filenames inside a gallery (title alone collides
   // when every item shares the post title).
   filenameMode: DEFAULT_FILENAME_SCHEME,
+  rangeFilenameMode: DEFAULT_FILENAME_SCHEME,
   customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
   // video, single image, multi-item gallery). Replaces the older
@@ -310,6 +313,7 @@ async function init() {
   saveSettings.specificDestDir = s.specificDestDir ?? "";
   saveSettings.lastDir = s.lastDir ?? "";
   saveSettings.filenameMode = resolveFilenameMode(s);
+  saveSettings.rangeFilenameMode = resolveRangeFilenameMode(s);
   saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
   // flag inverts: "confirm-each = true" meant "prompt per file" which
@@ -1545,6 +1549,7 @@ function wireVideoRangeActions() {
   }
   if (startInput) startInput.value = "0:00";
   if (endInput) endInput.value = formatTimestamp(currentDuration || max);
+  updateDualRangeFill();
   const clampRange = (changed) => {
     const startSeconds = Number(startSlider.value) || 0;
     const endSeconds = Number(endSlider.value) || 0;
@@ -1552,6 +1557,7 @@ function wireVideoRangeActions() {
       if (changed === "start") endSlider.value = String(startSeconds);
       else startSlider.value = String(endSeconds);
     }
+    updateDualRangeFill();
   };
   const syncFromSlider = (side, slider, input) => {
     clampRange(side);
@@ -1600,6 +1606,23 @@ function wireVideoRangeActions() {
   el("range-download").onclick = startRangeDownload;
   scheduleRangePreview("start", 0, { immediate: true });
   scheduleRangePreview("end", currentDuration || max, { immediate: true });
+}
+
+function updateDualRangeFill() {
+  const track = el("range-dual-slider");
+  const startSlider = el("range-start-slider");
+  const endSlider = el("range-end-slider");
+  if (!track || !startSlider || !endSlider) return;
+  const max = Number(startSlider.max) || Number(endSlider.max) || 0;
+  if (max <= 0) {
+    track.style.setProperty("--range-start-pct", "0%");
+    track.style.setProperty("--range-end-pct", "100%");
+    return;
+  }
+  const startPct = Math.max(0, Math.min(100, ((Number(startSlider.value) || 0) / max) * 100));
+  const endPct = Math.max(0, Math.min(100, ((Number(endSlider.value) || 0) / max) * 100));
+  track.style.setProperty("--range-start-pct", `${Math.min(startPct, endPct).toFixed(2)}%`);
+  track.style.setProperty("--range-end-pct", `${Math.max(startPct, endPct).toFixed(2)}%`);
 }
 
 async function readCurrentVideoSeconds() {
@@ -1733,12 +1756,13 @@ function scheduleRangePreview(side, seconds, { immediate = false } = {}) {
   if (!state) return;
   const v = validateTimestamp(String(seconds), currentDuration);
   if (!v.ok) return;
-  const key = framePreviewKey(tabUrl, v.seconds);
+  const previewSeconds = rangePreviewTimestamp(v.seconds, currentDuration);
+  const key = framePreviewKey(tabUrl, previewSeconds);
   if (key === state.lastKey) return;
   state.lastKey = key;
   if (state.timer) clearTimeout(state.timer);
   renderRangePreviewLoading(side);
-  const run = () => requestRangePreview(side, v.seconds);
+  const run = () => requestRangePreview(side, previewSeconds);
   if (immediate) run();
   else state.timer = setTimeout(run, 450);
 }
@@ -1877,7 +1901,7 @@ function sourceToken() {
   return sourceTokenFromUrl(tabUrl);
 }
 
-function filenameBaseFromMode(mode, { title = "", handle = "", index = "" } = {}) {
+function filenameBaseFromMode(mode, { title = "", handle = "", index = "", start = "", end = "" } = {}) {
   const poster = normalizeHandle(handle);
   const cleanTitle = String(title || "").replace(/\s+/g, " ").trim();
   const template = filenameTemplateForMode(mode, saveSettings.customFilenameSchemes);
@@ -1887,6 +1911,8 @@ function filenameBaseFromMode(mode, { title = "", handle = "", index = "" } = {}
       poster,
       source: sourceToken(),
       index,
+      start,
+      end,
     });
   }
   if (mode === "title-uploader" && poster) return `${cleanTitle} -- ${poster}`.trim();
@@ -2066,12 +2092,21 @@ function startRangeDownload() {
   const kind = currentKind();
   const height = parseInt(el("quality").value, 10) || 0;
   const includeSubs = false;
-  const fnMode = selectedVideoFilenameMode();
+  const fnMode = saveSettings.rangeFilenameMode || saveSettings.filenameMode || selectedVideoFilenameMode();
   const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
   const handle = pickHandleText(currentUploaderId, currentUploader);
-  const rangeSuffix = `${frameTimestampFilenameSuffix(start.seconds)}-${frameTimestampFilenameSuffix(end.seconds)}`;
-  const base = customName || filenameBaseFromMode(fnMode, { title: currentTitle, handle });
-  const safeBase = buildSafeFilename(`${base} ${rangeSuffix}`, "__EXT__").replace(/\.__EXT__$/, "");
+  const startLabel = frameTimestampFilenameSuffix(start.seconds);
+  const endLabel = frameTimestampFilenameSuffix(end.seconds);
+  const rangeSuffix = `-- S${startLabel} -- E${endLabel}`;
+  const base = customName || filenameBaseFromMode(fnMode, {
+    title: currentTitle,
+    handle,
+    start: startLabel,
+    end: endLabel,
+  });
+  const suffixAlreadyPresent = String(base).includes(`S${startLabel}`) && String(base).includes(`E${endLabel}`);
+  const finalBase = suffixAlreadyPresent ? base : `${base} ${rangeSuffix}`;
+  const safeBase = buildSafeFilename(finalBase, "__EXT__").replace(/\.__EXT__$/, "");
   const msg = {
     cmd: "download",
     jobId: crypto.randomUUID(),
@@ -2082,7 +2117,7 @@ function startRangeDownload() {
   };
   if (!saveSettings.downloadAutomatically) {
     msg.askPath = true;
-    msg.defaultFileName = buildSafeFilename(`${base} ${rangeSuffix}`, kind === "audio" ? "m4a" : "mp4");
+    msg.defaultFileName = buildSafeFilename(finalBase, kind === "audio" ? "m4a" : "mp4");
     msg.startDir = saveSettings.destinationDir || saveSettings.lastDir || saveSettings.specificDestDir || "";
     msg.dialogTitle = "Save video range as...";
   } else {

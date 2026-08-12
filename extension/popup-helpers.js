@@ -67,6 +67,16 @@ export function framePreviewKey(url, seconds) {
   return `${url} @ ${safeSeconds.toFixed(3)}`;
 }
 
+export function rangePreviewTimestamp(seconds, duration = 0) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  const d = Number(duration);
+  if (Number.isFinite(d) && d > 0 && n >= d) {
+    return Math.max(0, d - 0.05);
+  }
+  return n;
+}
+
 /**
  * @param {{ savedSeconds?: unknown, fallbackSeconds?: unknown, duration?: number }} opts
  */

@@ -69,7 +69,9 @@ describe("popup markup", () => {
     expect(popupCss).toContain("cursor: pointer");
     expect(popupCss).toContain("background: var(--brand)");
     expect(popupCss).toContain("accent-color: var(--brand)");
-    expect(popupCss).toContain("grid-template-columns: 60px minmax(0, 1fr) 60px");
+    expect(popupCss).toContain("grid-template-columns: 54px minmax(0, 1fr) 54px");
+    expect(popupCss).toContain("linear-gradient(");
+    expect(popupCss).toContain("--range-start-pct");
   });
 
   it("places the gallery card save button left of the index badge", () => {
@@ -88,7 +90,10 @@ describe("popup markup", () => {
 
   it("adds options for integrated buttons and custom filename schemes", () => {
     expect(optionsHtml).toContain('id="integrated-categories"');
+    expect(optionsHtml).toContain('id="range-filename-mode"');
     expect(optionsHtml).toContain('id="custom-schemes"');
     expect(optionsHtml).toContain('id="custom-scheme-template"');
+    expect(optionsHtml).toContain("[Start]");
+    expect(optionsHtml).toContain("[End]");
   });
 });

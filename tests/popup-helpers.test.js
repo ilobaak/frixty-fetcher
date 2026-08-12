@@ -6,6 +6,7 @@ import {
   formatTimestamp,
   frameTimestampSelection,
   parseTimestamp,
+  rangePreviewTimestamp,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
   validateTimestamp,
@@ -61,6 +62,11 @@ describe("timestamp helpers", () => {
 
   it("keys frame previews by url and timestamp", () => {
     expect(framePreviewKey("https://youtu.be/abc", 12.4)).toBe("https://youtu.be/abc @ 12.400");
+  });
+
+  it("seeks range end previews just before the video duration", () => {
+    expect(rangePreviewTimestamp(120, 120)).toBeCloseTo(119.95);
+    expect(rangePreviewTimestamp(60, 120)).toBe(60);
   });
 
   it("prefers a valid saved frame timestamp over the auto-fetch timestamp", () => {

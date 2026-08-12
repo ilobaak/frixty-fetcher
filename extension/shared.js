@@ -276,6 +276,12 @@ export function applyFilenameTemplate(template, tokens = {}) {
     "[Site]": tokens.source || "",
     "[site]": tokens.source || "",
     "[Index]": tokens.index || "",
+    "[Start]": tokens.start || "",
+    "[Start Time]": tokens.start || "",
+    "[start time]": tokens.start || "",
+    "[End]": tokens.end || "",
+    "[End Time]": tokens.end || "",
+    "[end time]": tokens.end || "",
   };
   for (const [token, value] of Object.entries(replacements)) {
     out = out.split(token).join(String(value || ""));
@@ -339,6 +345,14 @@ export function resolveFilenameMode(s) {
   return raw === "default" || raw === "uploader-title-source" ? DEFAULT_FILENAME_SCHEME : raw;
 }
 
+export function resolveRangeFilenameMode(s) {
+  const raw = s.rangeFilenameMode ?? s.videoRangeFilenameMode ?? s.filenameMode;
+  if (raw === "default" || raw === "uploader-title-source" || raw === undefined) {
+    return DEFAULT_FILENAME_SCHEME;
+  }
+  return raw;
+}
+
 // migrateFilenameSettings collapses legacy filename-mode keys into the
 // single `filenameMode` and drops the obsolete keys + the very-old
 // `useOriginalFilenames` boolean. Returns the new settings object when
@@ -348,6 +362,7 @@ export function migrateFilenameSettings(settings) {
   const hasLegacy =
     settings.imageFilenameMode !== undefined ||
     settings.galleryFilenameMode !== undefined ||
+    settings.videoRangeFilenameMode !== undefined ||
     settings.useOriginalFilenames !== undefined;
   if (!hasLegacy && settings.filenameMode !== undefined) return null;
 
@@ -360,8 +375,14 @@ export function migrateFilenameSettings(settings) {
   } else if (next.filenameMode === "uploader-title-source") {
     next.filenameMode = DEFAULT_FILENAME_SCHEME;
   }
+  if (next.rangeFilenameMode === undefined && next.videoRangeFilenameMode !== undefined) {
+    next.rangeFilenameMode = resolveRangeFilenameMode(next);
+  } else if (next.rangeFilenameMode === "uploader-title-source") {
+    next.rangeFilenameMode = DEFAULT_FILENAME_SCHEME;
+  }
   delete next.imageFilenameMode;
   delete next.galleryFilenameMode;
+  delete next.videoRangeFilenameMode;
   delete next.useOriginalFilenames;
   return next;
 }

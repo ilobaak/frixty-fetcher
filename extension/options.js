@@ -9,6 +9,7 @@ import {
   migrateFilenameSettings,
   normalizeCustomFilenameSchemes,
   resolveFilenameMode,
+  resolveRangeFilenameMode,
 } from "./shared.js";
 
 const DEFAULT_MODE = "ask";
@@ -29,6 +30,7 @@ const hostVersionEl = el("host-version");
 const checkHostUpdatesBtn = el("check-host-updates");
 const hostUpdateResultEl = el("host-update-result");
 const integratedCategoriesEl = el("integrated-categories");
+const rangeFilenameModeEl = el("range-filename-mode");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
 const customSchemeTemplateEl = el("custom-scheme-template");
@@ -51,6 +53,7 @@ let current = {
   // The image picker maps "sequential" to "uploader-title" since per-item
   // indexing is meaningless for a 1-of-1 download.
   filenameMode: DEFAULT_FILENAME_SCHEME,
+  rangeFilenameMode: DEFAULT_FILENAME_SCHEME,
   customFilenameSchemes: [],
   integratedButtonSettings: {},
   twitterCookiesMode: "always",
@@ -189,6 +192,7 @@ async function load() {
   current.specificDestDir = s.specificDestDir ?? "";
   current.lastDir = s.lastDir ?? "";
   current.filenameMode = resolveFilenameMode(s);
+  current.rangeFilenameMode = resolveRangeFilenameMode(s);
   current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   current.integratedButtonSettings = migrateIntegratedButtonSettings(s.integratedButtonSettings || {});
   current.twitterCookiesMode = s.twitterCookiesMode ?? "always";
@@ -201,6 +205,7 @@ async function load() {
   if (modeRadio) modeRadio.checked = true;
   const fnRadio = document.querySelector(`input[name="filename-mode"][value="${current.filenameMode}"]`);
   if (fnRadio) fnRadio.checked = true;
+  renderRangeFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
   const twtRadio = document.querySelector(`input[name="twitter-cookies-mode"][value="${current.twitterCookiesMode}"]`);
@@ -252,6 +257,7 @@ async function save() {
     return;
   }
   current.filenameMode = document.querySelector('input[name="filename-mode"]:checked')?.value ?? DEFAULT_FILENAME_SCHEME;
+  current.rangeFilenameMode = rangeFilenameModeEl?.value || DEFAULT_FILENAME_SCHEME;
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
   current.youtubeCookiesMode = document.querySelector('input[name="youtube-cookies-mode"]:checked')?.value ?? "always";
@@ -268,6 +274,7 @@ async function save() {
       saveMode: current.saveMode,
       specificDestDir: current.specificDestDir,
       filenameMode: current.filenameMode,
+      rangeFilenameMode: current.rangeFilenameMode,
       customFilenameSchemes: current.customFilenameSchemes,
       integratedButtonSettings: current.integratedButtonSettings,
       twitterCookiesMode: current.twitterCookiesMode,
@@ -278,6 +285,20 @@ async function save() {
     },
   });
   flashSaved();
+}
+
+function renderRangeFilenameMode() {
+  if (!rangeFilenameModeEl) return;
+  const previous = rangeFilenameModeEl.value || current.rangeFilenameMode;
+  rangeFilenameModeEl.innerHTML = "";
+  for (const opt of filenameSchemeOptions(current.customFilenameSchemes, { includeGalleryOnly: false, includeOriginal: false })) {
+    if (opt.value === "setEach") continue;
+    rangeFilenameModeEl.add(new Option(opt.label, opt.value));
+  }
+  rangeFilenameModeEl.value = [...rangeFilenameModeEl.options].some((o) => o.value === previous)
+    ? previous
+    : DEFAULT_FILENAME_SCHEME;
+  current.rangeFilenameMode = rangeFilenameModeEl.value;
 }
 
 function migrateIntegratedButtonSettings(raw) {
@@ -366,6 +387,7 @@ function renderCustomSchemes() {
     remove.textContent = "Remove";
     remove.onclick = () => {
       current.customFilenameSchemes = current.customFilenameSchemes.filter((s) => s.id !== scheme.id);
+      renderRangeFilenameMode();
       renderCustomSchemes();
       renderIntegratedCategories();
     };
@@ -389,6 +411,7 @@ function addCustomScheme() {
   customSchemeNameEl.value = "";
   customSchemeTemplateEl.value = "";
   hideError();
+  renderRangeFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
 }

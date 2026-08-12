@@ -9,7 +9,17 @@ const popupSource = readFileSync(resolve(here, "../extension/popup.js"), "utf8")
 function functionBody(name) {
   const start = popupSource.indexOf(`function ${name}(`);
   expect(start).toBeGreaterThanOrEqual(0);
-  const brace = popupSource.indexOf("{", start);
+  let parenDepth = 0;
+  let brace = -1;
+  for (let i = popupSource.indexOf("(", start); i < popupSource.length; i += 1) {
+    if (popupSource[i] === "(") parenDepth += 1;
+    if (popupSource[i] === ")") parenDepth -= 1;
+    if (parenDepth === 0 && popupSource[i] === "{") {
+      brace = i;
+      break;
+    }
+  }
+  expect(brace).toBeGreaterThanOrEqual(0);
   let depth = 0;
   for (let i = brace; i < popupSource.length; i += 1) {
     if (popupSource[i] === "{") depth += 1;
@@ -83,6 +93,17 @@ describe("popup naming modes", () => {
     expect(functionBody("startImageDownload")).toContain("filenameBaseFromMode");
     expect(functionBody("downloadTextCapture")).toContain("filenameBaseFromMode");
     expect(functionBody("startGallerySingleItem")).toContain("filenameBaseFromMode");
+  });
+
+  it("adds start and end timestamps to video range filenames", () => {
+    const body = functionBody("startRangeDownload");
+    expect(body).toContain("rangeSuffix = `-- S${startLabel} -- E${endLabel}`");
+    expect(body).toContain("saveSettings.rangeFilenameMode");
+    expect(body).toContain("suffixAlreadyPresent");
+  });
+
+  it("uses bounded timestamps for range preview requests", () => {
+    expect(functionBody("scheduleRangePreview")).toContain("rangePreviewTimestamp");
   });
 
   it("implements title-poster folder names", () => {

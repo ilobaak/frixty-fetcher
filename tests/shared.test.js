@@ -12,6 +12,7 @@ import {
   extensionFromUrl,
   sanitizeFilenameSegment,
   resolveFilenameMode,
+  resolveRangeFilenameMode,
   migrateFilenameSettings,
   buildSafeFilename,
   sanitizeLooseFilename,
@@ -166,6 +167,18 @@ describe("resolveFilenameMode", () => {
   });
 });
 
+describe("resolveRangeFilenameMode", () => {
+  it("uses the range filename mode when present", () => {
+    expect(resolveRangeFilenameMode({ filenameMode: "title", rangeFilenameMode: "custom:a" })).toBe(
+      "custom:a",
+    );
+  });
+
+  it("falls back to the shared filename mode", () => {
+    expect(resolveRangeFilenameMode({ filenameMode: "title" })).toBe("title");
+  });
+});
+
 describe("filename source tokens", () => {
   it("uses x.com for Twitter/X URLs", () => {
     expect(sourceTokenFromUrl("https://twitter.com/user/status/1")).toBe("x.com");
@@ -177,15 +190,17 @@ describe("filename source tokens", () => {
     expect(sourceTokenFromUrl("https://facebook.com/watch/1")).toBe("facebook");
   });
 
-  it("applies title, poster, source, and index tokens", () => {
+  it("applies title, poster, source, index, and range tokens", () => {
     expect(
-      applyFilenameTemplate("[Title] -- [@Poster] -- [Source] -- [Index]", {
+      applyFilenameTemplate("[Title] -- [@Poster] -- [Source] -- [Index] -- S[Start] -- E[End]", {
         title: "Post",
         poster: "@user",
         source: "x.com",
         index: "02",
+        start: "0-10",
+        end: "0-30",
       }),
-    ).toBe("Post -- @user -- x.com -- 02");
+    ).toBe("Post -- @user -- x.com -- 02 -- S0-10 -- E0-30");
   });
 });
 
@@ -330,6 +345,13 @@ describe("migrateFilenameSettings", () => {
 
   it("seeds filenameMode on a fresh install (empty settings)", () => {
     expect(migrateFilenameSettings({})).toEqual({ filenameMode: DEFAULT_FILENAME_SCHEME });
+  });
+
+  it("migrates the legacy video range filename setting", () => {
+    expect(migrateFilenameSettings({ videoRangeFilenameMode: "title" })).toEqual({
+      filenameMode: DEFAULT_FILENAME_SCHEME,
+      rangeFilenameMode: "title",
+    });
   });
 
   it("preserves unrelated settings keys", () => {

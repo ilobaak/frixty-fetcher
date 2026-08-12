@@ -170,6 +170,16 @@
       has more than one item.
     </p>
 
+    <h2>Video range download filenames</h2>
+    <label class="card-control">
+      <span>Default scheme</span>
+      <select id="range-filename-mode"></select>
+    </label>
+    <p class="muted" style="margin-top: 4px">
+      Range downloads append <code>-- S[Start] -- E[End]</code> unless the selected custom scheme
+      already uses both time tokens.
+    </p>
+
     <h2>Integrated download buttons</h2>
     <div id="integrated-categories"></div>
 
@@ -180,10 +190,15 @@
       <input
         id="custom-scheme-template"
         type="text"
-        placeholder="[Title] -- [@Poster] -- [Source]"
+        placeholder="[Title] -- [@Poster] -- [Source] -- S[Start] -- E[End]"
       />
       <button id="add-custom-scheme" type="button">Add scheme</button>
     </div>
+    <p class="muted token-list">
+      Tokens: <code>[Title]</code>, <code>[@Poster]</code>, <code>[Source]</code>,
+      <code>[Index]</code>, <code>[Start]</code>, <code>[End]</code>, <code>[Start Time]</code>,
+      <code>[End Time]</code>.
+    </p>
 
     <script type="module" src="options.js"></script>
   </body>

@@ -396,7 +396,7 @@ select {
 }
 .range-control-row {
   display: grid;
-  grid-template-columns: 60px minmax(0, 1fr) 60px;
+  grid-template-columns: 54px minmax(0, 1fr) 54px;
   gap: 6px;
   align-items: center;
 }
@@ -414,6 +414,8 @@ select {
   position: relative;
   height: 26px;
   min-width: 0;
+  --range-start-pct: 0%;
+  --range-end-pct: 100%;
 }
 .dual-range::before {
   content: "";
@@ -423,7 +425,15 @@ select {
   top: 12px;
   height: 4px;
   border-radius: 999px;
-  background: var(--accent);
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--range-start-pct),
+    var(--brand) var(--range-start-pct),
+    var(--brand) var(--range-end-pct),
+    var(--accent) var(--range-end-pct),
+    var(--accent) 100%
+  );
 }
 .dual-range input[type="range"] {
   position: absolute;

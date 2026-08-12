@@ -79,6 +79,26 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.card-control {
+  margin: 8px 0 4px;
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.card-control span {
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+}
+.card-control select {
+  min-width: 0;
+  padding: 5px 8px;
+  font: inherit;
+}
+.token-list code {
+  white-space: nowrap;
+}
 .row {
   display: flex;
   gap: 8px;

@@ -71,7 +71,32 @@ export const TIME_TOKEN_FORMAT_OPTIONS = [
   { value: "hh.mm.ss", label: "HH.MM.SS", example: "01.02.03" },
 ];
 
+export const DEFAULT_DATETIME_TOKEN_FORMAT = "yyyy.mm.dd-hh.mm.ss";
+
+export const DATETIME_TOKEN_FORMAT_OPTIONS = [
+  { value: "yyyy.mm.dd-hh.mm.ss", label: "YYYY.MM.DD-HH.MM.SS", example: "2026.08.18-17.49.04" },
+  { value: "yyyy-mm-dd-hh.mm.ss", label: "YYYY-MM-DD-HH.MM.SS", example: "2026-08-18-17.49.04" },
+  { value: "yyyy.mm.dd", label: "YYYY.MM.DD", example: "2026.08.18" },
+  { value: "yyyy-mm-dd", label: "YYYY-MM-DD", example: "2026-08-18" },
+  { value: "yyyymmdd-hhmmss", label: "YYYYMMDD-HHMMSS", example: "20260818-174904" },
+];
+
 export function normalizeCustomTimeTokenFormats(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const entry of raw) {
+    const id = String(entry?.id || "").trim();
+    const name = String(entry?.name || "").trim();
+    const pattern = String(entry?.pattern || "").trim();
+    if (!id || !name || !pattern || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name, pattern });
+  }
+  return out;
+}
+
+export function normalizeCustomDatetimeTokenFormats(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
   const seen = new Set();
@@ -122,6 +147,65 @@ export function filenameTimeToken(seconds, format = DEFAULT_TIME_TOKEN_FORMAT, c
   if (format === 'hh:mm"ss') return `${hours}:${minutes}"${secs}`;
   if (format === "hh.mm.ss") return `${hours}.${minutes}.${secs}`;
   return `${hours}.${minutes}.${secs}.${milliseconds}`;
+}
+
+export function filenameDatetimeParts(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  const year = String(d.getFullYear()).padStart(4, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  const milliseconds = String(d.getMilliseconds()).padStart(3, "0");
+  return {
+    year,
+    shortYear: year.slice(-2),
+    month,
+    day,
+    hours,
+    minutes,
+    seconds,
+    milliseconds,
+  };
+}
+
+function applyDatetimePattern(pattern, parts) {
+  return String(pattern || "")
+    .replace(/milliseconds/g, parts.milliseconds)
+    .replace(/YYYY/g, parts.year)
+    .replace(/YY/g, parts.shortYear)
+    .replace(/DD/g, parts.day)
+    .replace(/HH/g, parts.hours)
+    .replace(/SS/g, parts.seconds)
+    .replace(/MM/g, parts.month)
+    .replace(/mm/g, parts.minutes);
+}
+
+export function filenameDatetimeToken(
+  date = new Date(),
+  format = DEFAULT_DATETIME_TOKEN_FORMAT,
+  customFormats = [],
+) {
+  const parts = filenameDatetimeParts(date);
+  if (!parts) return "";
+  if (typeof format === "string" && format.startsWith("custom:")) {
+    const id = format.slice("custom:".length);
+    const custom = normalizeCustomDatetimeTokenFormats(customFormats).find(
+      (entry) => entry.id === id,
+    );
+    if (custom) return applyDatetimePattern(custom.pattern, parts);
+  }
+  if (format === "yyyy-mm-dd-hh.mm.ss") {
+    return `${parts.year}-${parts.month}-${parts.day}-${parts.hours}.${parts.minutes}.${parts.seconds}`;
+  }
+  if (format === "yyyy.mm.dd") return `${parts.year}.${parts.month}.${parts.day}`;
+  if (format === "yyyy-mm-dd") return `${parts.year}-${parts.month}-${parts.day}`;
+  if (format === "yyyymmdd-hhmmss") {
+    return `${parts.year}${parts.month}${parts.day}-${parts.hours}${parts.minutes}${parts.seconds}`;
+  }
+  return `${parts.year}.${parts.month}.${parts.day}-${parts.hours}.${parts.minutes}.${parts.seconds}`;
 }
 
 export function framePreviewKey(url, seconds) {

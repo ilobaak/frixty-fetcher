@@ -60,13 +60,15 @@ import {
 } from "./shared.js";
 import { friendlyError } from "./popup-errors.js";
 import {
+  DEFAULT_DATETIME_TOKEN_FORMAT,
   DEFAULT_TIME_TOKEN_FORMAT,
-  filenameTimeParts,
+  filenameDatetimeToken,
   formatTimestamp,
   filenameTimeToken,
   framePreviewKey,
   frameTimestampSelection,
   rangePreviewTimestamp,
+  normalizeCustomDatetimeTokenFormats,
   normalizeCustomTimeTokenFormats,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
@@ -270,6 +272,8 @@ const saveSettings = {
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
   customTimeTokenFormats: [],
+  datetimeTokenFormat: DEFAULT_DATETIME_TOKEN_FORMAT,
+  customDatetimeTokenFormats: [],
   bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
@@ -337,6 +341,8 @@ async function init() {
   saveSettings.frameFilenameMode = resolveFrameFilenameMode(s);
   saveSettings.timeTokenFormat = s.timeTokenFormat || DEFAULT_TIME_TOKEN_FORMAT;
   saveSettings.customTimeTokenFormats = normalizeCustomTimeTokenFormats(s.customTimeTokenFormats);
+  saveSettings.datetimeTokenFormat = s.datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT;
+  saveSettings.customDatetimeTokenFormats = normalizeCustomDatetimeTokenFormats(s.customDatetimeTokenFormats);
   saveSettings.bestAvailableMaxHeight = resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight);
   saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
@@ -1937,22 +1943,11 @@ function filenameBaseFromMode(
     title = "",
     handle = "",
     index = "",
-    startTime = "",
-    endTime = "",
-    frameTime = "",
-    frameNumber = "",
-    hours = "",
-    minutes = "",
-    seconds = "",
-    milliseconds = "",
-    startHours = "",
-    startMinutes = "",
-    startSeconds = "",
-    startMilliseconds = "",
-    endHours = "",
-    endMinutes = "",
-    endSeconds = "",
-    endMilliseconds = "",
+    datetime = "",
+    videoStartTime = "",
+    videoEndTime = "",
+    videoFrameTime = "",
+    videoFrameNumber = "",
   } = {},
 ) {
   const poster = normalizeHandle(handle);
@@ -1964,22 +1959,17 @@ function filenameBaseFromMode(
       poster,
       source: sourceToken(),
       index,
-      startTime,
-      endTime,
-      frameTime,
-      frameNumber,
-      hours,
-      minutes,
-      seconds,
-      milliseconds,
-      startHours,
-      startMinutes,
-      startSeconds,
-      startMilliseconds,
-      endHours,
-      endMinutes,
-      endSeconds,
-      endMilliseconds,
+      datetime:
+        datetime ||
+        filenameDatetimeToken(
+          new Date(),
+          saveSettings.datetimeTokenFormat,
+          saveSettings.customDatetimeTokenFormats,
+        ),
+      videoStartTime,
+      videoEndTime,
+      videoFrameTime,
+      videoFrameNumber,
     });
   }
   if (mode === "title-uploader" && poster) return `${cleanTitle} -- ${poster}`.trim();
@@ -2082,20 +2072,15 @@ function videoToolBaseName(kind, seconds = 0) {
     kind === "thumbnail"
       ? saveSettings.thumbnailFilenameMode
       : saveSettings.frameFilenameMode;
-  const parts = filenameTimeParts(seconds) || {};
   const base = filenameBaseFromMode(mode, {
     title: currentTitle,
     handle,
-    frameTime: filenameTimeToken(
+    videoFrameTime: filenameTimeToken(
       seconds,
       saveSettings.timeTokenFormat,
       saveSettings.customTimeTokenFormats,
     ),
-    frameNumber: "",
-    hours: parts.hours,
-    minutes: parts.minutes,
-    seconds: parts.seconds,
-    milliseconds: parts.milliseconds,
+    videoFrameNumber: "",
   });
   return buildSafeFilename(base, kind === "thumbnail" ? "jpg" : "png");
 }
@@ -2179,33 +2164,19 @@ function startRangeDownload() {
   const fnMode = saveSettings.rangeFilenameMode || DEFAULT_RANGE_FILENAME_SCHEME;
   const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
   const handle = pickHandleText(currentUploaderId, currentUploader);
-  const startParts = filenameTimeParts(start.seconds) || {};
-  const endParts = filenameTimeParts(end.seconds) || {};
   const base = customName || filenameBaseFromMode(fnMode, {
     title: currentTitle,
     handle,
-    startTime: filenameTimeToken(
+    videoStartTime: filenameTimeToken(
       start.seconds,
       saveSettings.timeTokenFormat,
       saveSettings.customTimeTokenFormats,
     ),
-    endTime: filenameTimeToken(
+    videoEndTime: filenameTimeToken(
       end.seconds,
       saveSettings.timeTokenFormat,
       saveSettings.customTimeTokenFormats,
     ),
-    hours: startParts.hours,
-    minutes: startParts.minutes,
-    seconds: startParts.seconds,
-    milliseconds: startParts.milliseconds,
-    startHours: startParts.hours,
-    startMinutes: startParts.minutes,
-    startSeconds: startParts.seconds,
-    startMilliseconds: startParts.milliseconds,
-    endHours: endParts.hours,
-    endMinutes: endParts.minutes,
-    endSeconds: endParts.seconds,
-    endMilliseconds: endParts.milliseconds,
   });
   const finalBase = base;
   const safeBase = buildSafeFilename(finalBase, "__EXT__").replace(/\.__EXT__$/, "");

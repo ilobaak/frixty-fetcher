@@ -4,8 +4,12 @@
 // page.
 
 import {
+  DATETIME_TOKEN_FORMAT_OPTIONS,
+  DEFAULT_DATETIME_TOKEN_FORMAT,
   DEFAULT_TIME_TOKEN_FORMAT,
+  filenameDatetimeToken,
   filenameTimeToken,
+  normalizeCustomDatetimeTokenFormats,
   normalizeCustomTimeTokenFormats,
   TIME_TOKEN_FORMAT_OPTIONS,
 } from "./popup-helpers.js";
@@ -61,6 +65,11 @@ const customTimeFormatsEl = el("custom-time-formats");
 const customTimeFormatNameEl = el("custom-time-format-name");
 const customTimeFormatPatternEl = el("custom-time-format-pattern");
 const addCustomTimeFormatBtn = el("add-custom-time-format");
+const datetimeTokenFormatEl = el("datetime-token-format");
+const customDatetimeFormatsEl = el("custom-datetime-formats");
+const customDatetimeFormatNameEl = el("custom-datetime-format-name");
+const customDatetimeFormatPatternEl = el("custom-datetime-format-pattern");
+const addCustomDatetimeFormatBtn = el("add-custom-datetime-format");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
 const customSchemeTemplateEl = el("custom-scheme-template");
@@ -90,6 +99,8 @@ let current = {
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
   customTimeTokenFormats: [],
+  datetimeTokenFormat: DEFAULT_DATETIME_TOKEN_FORMAT,
+  customDatetimeTokenFormats: [],
   bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   customFilenameSchemes: [],
   integratedButtonSettings: {},
@@ -117,6 +128,8 @@ function defaultOptionsSettings() {
     frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
     timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
     customTimeTokenFormats: [],
+    datetimeTokenFormat: DEFAULT_DATETIME_TOKEN_FORMAT,
+    customDatetimeTokenFormats: [],
     bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
     customFilenameSchemes: [],
     integratedButtonSettings: defaultIntegratedButtonSettings(),
@@ -266,6 +279,8 @@ async function load() {
   current.frameFilenameMode = resolveFrameFilenameMode(s);
   current.customTimeTokenFormats = normalizeCustomTimeTokenFormats(s.customTimeTokenFormats);
   current.timeTokenFormat = resolveTimeTokenFormat(s.timeTokenFormat);
+  current.customDatetimeTokenFormats = normalizeCustomDatetimeTokenFormats(s.customDatetimeTokenFormats);
+  current.datetimeTokenFormat = resolveDatetimeTokenFormat(s.datetimeTokenFormat);
   current.bestAvailableMaxHeight = resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight);
   current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   current.integratedButtonSettings = migrateIntegratedButtonSettings(s.integratedButtonSettings || {});
@@ -281,6 +296,8 @@ async function load() {
   renderVideoImageFilenameModes();
   renderTimeTokenFormat();
   renderCustomTimeFormats();
+  renderDatetimeTokenFormat();
+  renderCustomDatetimeFormats();
   renderBestAvailableQualityCap();
   renderFilenameMode();
   renderCustomSchemes();
@@ -340,6 +357,8 @@ async function save() {
   current.frameFilenameMode = frameFilenameModeEl?.value || DEFAULT_FRAME_FILENAME_SCHEME;
   current.timeTokenFormat = resolveTimeTokenFormat(timeTokenFormatEl?.value);
   current.customTimeTokenFormats = normalizeCustomTimeTokenFormats(current.customTimeTokenFormats);
+  current.datetimeTokenFormat = resolveDatetimeTokenFormat(datetimeTokenFormatEl?.value);
+  current.customDatetimeTokenFormats = normalizeCustomDatetimeTokenFormats(current.customDatetimeTokenFormats);
   current.bestAvailableMaxHeight = readBestAvailableQualityCap();
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
@@ -363,6 +382,8 @@ async function save() {
       frameFilenameMode: current.frameFilenameMode,
       timeTokenFormat: current.timeTokenFormat,
       customTimeTokenFormats: current.customTimeTokenFormats,
+      datetimeTokenFormat: current.datetimeTokenFormat,
+      customDatetimeTokenFormats: current.customDatetimeTokenFormats,
       bestAvailableMaxHeight: current.bestAvailableMaxHeight,
       customFilenameSchemes: current.customFilenameSchemes,
       integratedButtonSettings: current.integratedButtonSettings,
@@ -511,6 +532,97 @@ function addCustomTimeFormat() {
   hideError();
   renderTimeTokenFormat();
   renderCustomTimeFormats();
+}
+
+function resolveDatetimeTokenFormat(value) {
+  if (DATETIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.value === value)) return value;
+  if (
+    typeof value === "string" &&
+    value.startsWith("custom:") &&
+    current.customDatetimeTokenFormats.some((fmt) => `custom:${fmt.id}` === value)
+  ) {
+    return value;
+  }
+  return DEFAULT_DATETIME_TOKEN_FORMAT;
+}
+
+function renderDatetimeTokenFormat() {
+  if (!datetimeTokenFormatEl) return;
+  const previous = resolveDatetimeTokenFormat(datetimeTokenFormatEl.value || current.datetimeTokenFormat);
+  datetimeTokenFormatEl.innerHTML = "";
+  for (const opt of DATETIME_TOKEN_FORMAT_OPTIONS) {
+    datetimeTokenFormatEl.add(new Option(opt.label, opt.value));
+  }
+  for (const fmt of current.customDatetimeTokenFormats) {
+    datetimeTokenFormatEl.add(new Option(fmt.name, `custom:${fmt.id}`));
+  }
+  datetimeTokenFormatEl.value = previous;
+  current.datetimeTokenFormat = datetimeTokenFormatEl.value;
+}
+
+function renderCustomDatetimeFormats() {
+  if (!customDatetimeFormatsEl) return;
+  customDatetimeFormatsEl.innerHTML = "";
+  if (current.customDatetimeTokenFormats.length === 0) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No custom datetime formats saved.";
+    customDatetimeFormatsEl.append(p);
+    return;
+  }
+  const sample = new Date(2026, 7, 18, 17, 49, 4, 125);
+  for (const fmt of current.customDatetimeTokenFormats) {
+    const row = document.createElement("div");
+    row.className = "specific-body custom-time-format-row";
+    const name = document.createElement("span");
+    name.textContent = `${fmt.name}: ${fmt.pattern} (${filenameDatetimeToken(sample, `custom:${fmt.id}`, [fmt])})`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger";
+    remove.textContent = "Remove";
+    remove.onclick = () => {
+      current.customDatetimeTokenFormats = current.customDatetimeTokenFormats.filter((entry) => entry.id !== fmt.id);
+      if (current.datetimeTokenFormat === `custom:${fmt.id}`) {
+        current.datetimeTokenFormat = DEFAULT_DATETIME_TOKEN_FORMAT;
+      }
+      renderDatetimeTokenFormat();
+      renderCustomDatetimeFormats();
+    };
+    row.append(name, remove);
+    customDatetimeFormatsEl.append(row);
+  }
+}
+
+function customDatetimeFormatNameTaken(name) {
+  const target = name.trim().toLowerCase();
+  if (!target) return false;
+  return (
+    DATETIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.label.toLowerCase() === target) ||
+    current.customDatetimeTokenFormats.some((fmt) => fmt.name.toLowerCase() === target)
+  );
+}
+
+function addCustomDatetimeFormat() {
+  const name = String(customDatetimeFormatNameEl?.value || "").trim();
+  const pattern = String(customDatetimeFormatPatternEl?.value || "").trim();
+  if (!name || !pattern) {
+    showError("Enter a name and datetime format.");
+    return;
+  }
+  if (customDatetimeFormatNameTaken(name)) {
+    showError("That datetime format name already exists.");
+    return;
+  }
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  current.customDatetimeTokenFormats = normalizeCustomDatetimeTokenFormats([
+    ...current.customDatetimeTokenFormats,
+    { id, name, pattern },
+  ]);
+  customDatetimeFormatNameEl.value = "";
+  customDatetimeFormatPatternEl.value = "";
+  hideError();
+  renderDatetimeTokenFormat();
+  renderCustomDatetimeFormats();
 }
 
 function qualityCapIndexForHeight(height) {
@@ -716,6 +828,8 @@ async function resetOptionsToDefaults() {
   renderVideoImageFilenameModes();
   renderTimeTokenFormat();
   renderCustomTimeFormats();
+  renderDatetimeTokenFormat();
+  renderCustomDatetimeFormats();
   renderBestAvailableQualityCap();
   renderFilenameMode();
   renderCustomSchemes();
@@ -767,6 +881,9 @@ checkHostUpdatesBtn.addEventListener("click", () => {
 
 if (addCustomSchemeBtn) addCustomSchemeBtn.addEventListener("click", addCustomScheme);
 if (addCustomTimeFormatBtn) addCustomTimeFormatBtn.addEventListener("click", addCustomTimeFormat);
+if (addCustomDatetimeFormatBtn) {
+  addCustomDatetimeFormatBtn.addEventListener("click", addCustomDatetimeFormat);
+}
 if (resetOptionsBtn) resetOptionsBtn.addEventListener("click", resetOptionsToDefaults);
 
 connect();

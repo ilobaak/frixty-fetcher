@@ -17,6 +17,11 @@ import {
   basenameFromUrl,
   resolveBestAvailableMaxHeight,
 } from "./shared.js";
+import {
+  DEFAULT_DATETIME_TOKEN_FORMAT,
+  filenameDatetimeToken,
+  normalizeCustomDatetimeTokenFormats,
+} from "./popup-helpers.js";
 import { getFacebookStoryFromInterceptor, getFacebookDomInfo } from "./facebook.js";
 import {
   captureKey,
@@ -305,6 +310,10 @@ async function readIntegratedSetting(url) {
   return {
     category,
     customFilenameSchemes: normalizeCustomFilenameSchemes(settings.customFilenameSchemes),
+    customDatetimeTokenFormats: normalizeCustomDatetimeTokenFormats(
+      settings.customDatetimeTokenFormats,
+    ),
+    datetimeTokenFormat: settings.datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT,
     bestAvailableMaxHeight: resolveBestAvailableMaxHeight(settings.bestAvailableMaxHeight),
     ...all[category],
   };
@@ -331,7 +340,15 @@ async function prefetchActiveTabMedia(tabId, url) {
   }
 }
 
-function concreteFilenameBase({ mode, customFilenameSchemes, title, poster, url }) {
+function concreteFilenameBase({
+  mode,
+  customFilenameSchemes,
+  title,
+  poster,
+  url,
+  datetimeTokenFormat,
+  customDatetimeTokenFormats,
+}) {
   const template = filenameTemplateForMode(mode || DEFAULT_FILENAME_SCHEME, customFilenameSchemes);
   const handle = normalizeHandle(poster || "");
   if (template) {
@@ -340,6 +357,11 @@ function concreteFilenameBase({ mode, customFilenameSchemes, title, poster, url 
       poster: handle,
       source: sourceTokenFromUrl(url),
       index: "",
+      datetime: filenameDatetimeToken(
+        new Date(),
+        datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT,
+        customDatetimeTokenFormats,
+      ),
     });
   }
   if (mode === "title-uploader" && handle) return `${title || ""} -- ${handle}`.trim();
@@ -359,6 +381,8 @@ async function startIntegratedPayloadDownload(tabId, payload) {
   const base = concreteFilenameBase({
     mode: setting.filenameMode,
     customFilenameSchemes: setting.customFilenameSchemes,
+    datetimeTokenFormat: setting.datetimeTokenFormat,
+    customDatetimeTokenFormats: setting.customDatetimeTokenFormats,
     title,
     poster,
     url,

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  DATETIME_TOKEN_FORMAT_OPTIONS,
+  DEFAULT_DATETIME_TOKEN_FORMAT,
   DEFAULT_TIME_TOKEN_FORMAT,
   TIME_TOKEN_FORMAT_OPTIONS,
+  filenameDatetimeParts,
+  filenameDatetimeToken,
   filenameTimeParts,
   filenameTimeToken,
   framePreviewKey,
@@ -94,6 +98,34 @@ describe("timestamp helpers", () => {
         { id: "b", name: "", pattern: "MM" },
       ]),
     ).toEqual([{ id: "a", name: "Readable", pattern: 'HH.MM"SS' }]);
+  });
+
+  it("formats datetime tokens with local datetime parts", () => {
+    const date = new Date(2026, 7, 18, 17, 49, 4, 125);
+    expect(filenameDatetimeParts(date)).toEqual({
+      year: "2026",
+      shortYear: "26",
+      month: "08",
+      day: "18",
+      hours: "17",
+      minutes: "49",
+      seconds: "04",
+      milliseconds: "125",
+    });
+    expect(DEFAULT_DATETIME_TOKEN_FORMAT).toBe("yyyy.mm.dd-hh.mm.ss");
+    expect(filenameDatetimeToken(date)).toBe("2026.08.18-17.49.04");
+  });
+
+  it("formats datetime tokens with selected and custom formats", () => {
+    const date = new Date(2026, 7, 18, 17, 49, 4, 125);
+    const custom = [
+      { id: "readable", name: "Readable", pattern: "YYYY-MM-DD HH-mm-SS-milliseconds" },
+    ];
+    expect(DATETIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain("yyyymmdd-hhmmss");
+    expect(filenameDatetimeToken(date, "yyyy-mm-dd-hh.mm.ss")).toBe("2026-08-18-17.49.04");
+    expect(filenameDatetimeToken(date, "yyyymmdd-hhmmss")).toBe("20260818-174904");
+    expect(filenameDatetimeToken(date, "custom:readable", custom)).toBe("2026-08-18 17-49-04-125");
+    expect(filenameDatetimeToken(date, "custom:missing", custom)).toBe("2026.08.18-17.49.04");
   });
 
   it("returns filename time segments for custom tokens", () => {

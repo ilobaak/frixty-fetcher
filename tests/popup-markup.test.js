@@ -110,6 +110,12 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="custom-time-format-pattern"');
     expect(optionsHtml).toContain('id="add-custom-time-format"');
     expect(optionsHtml).toContain("Custom time formats can use");
+    expect(optionsHtml).toContain('id="datetime-token-format"');
+    expect(optionsHtml).toContain('id="custom-datetime-formats"');
+    expect(optionsHtml).toContain('id="custom-datetime-format-name"');
+    expect(optionsHtml).toContain('id="custom-datetime-format-pattern"');
+    expect(optionsHtml).toContain('id="add-custom-datetime-format"');
+    expect(optionsHtml).toContain("Custom datetime formats can use");
     expect(optionsHtml).toContain('id="reset-options"');
     expect(optionsHtml).toContain("Reset options to default");
     expect(optionsHtml).toContain("Thumbnail Download");
@@ -119,16 +125,21 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="custom-scheme-template"');
     expect(optionsHtml).not.toContain("<code>[Start]</code>");
     expect(optionsHtml).not.toContain("<code>[End]</code>");
-    expect(optionsHtml).toContain("[Start Time]");
-    expect(optionsHtml).toContain("[End Time]");
-    expect(optionsHtml).toContain("[Frame Time]");
-    expect(optionsHtml).toContain("[Frame Number]");
-    expect(optionsHtml).toContain("[Hours]");
-    expect(optionsHtml).toContain("[Minutes]");
-    expect(optionsHtml).toContain("[Start Hours]");
-    expect(optionsHtml).toContain("[End Minutes]");
-    expect(optionsHtml).toContain("FRAME([Frame Time])");
-    expect(optionsHtml).toContain("S([Start Time])");
+    expect(optionsHtml).toContain("[Datetime]");
+    expect(optionsHtml).toContain("[Video Start Time]");
+    expect(optionsHtml).toContain("[Video End Time]");
+    expect(optionsHtml).toContain("[Video Frame Time]");
+    expect(optionsHtml).toContain("[Video Frame Number]");
+    expect(optionsHtml).not.toContain("<code>[Start Time]</code>");
+    expect(optionsHtml).not.toContain("<code>[End Time]</code>");
+    expect(optionsHtml).not.toContain("<code>[Frame Time]</code>");
+    expect(optionsHtml).not.toContain("<code>[Frame Number]</code>");
+    expect(optionsHtml).not.toContain("<code>[Hours]</code>");
+    expect(optionsHtml).not.toContain("<code>[Minutes]</code>");
+    expect(optionsHtml).not.toContain("<code>[Start Hours]</code>");
+    expect(optionsHtml).not.toContain("<code>[End Minutes]</code>");
+    expect(optionsHtml).toContain("FRAME([Video Frame Time])");
+    expect(optionsHtml).toContain("S([Video Start Time])");
     expect(optionsHtml).toContain("Media or post title");
     expect(optionsHtml).toContain("Site token");
     expect(optionsHtml).toContain("Video range start using the selected time format");
@@ -137,6 +148,9 @@ describe("popup markup", () => {
       optionsHtml.indexOf("<h2>Time token format</h2>"),
     );
     expect(optionsHtml.indexOf("<h2>Time token format</h2>")).toBeLessThan(
+      optionsHtml.indexOf("<h2>Datetime token format</h2>"),
+    );
+    expect(optionsHtml.indexOf("<h2>Datetime token format</h2>")).toBeLessThan(
       optionsHtml.indexOf("<h2>Custom filename schemes</h2>"),
     );
   });

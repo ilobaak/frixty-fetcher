@@ -250,24 +250,25 @@ describe("filename source tokens", () => {
   it("applies title, poster, source, index, range time, and frame tokens", () => {
     expect(
       applyFilenameTemplate(
-        "[@Poster] -- [Title] -- [Source] - [Index] -- S([Start Time]) -- E([End Time]) -- FRAME([Frame Time]) -- [Frame Number]",
+        "[@Poster] -- [Title] -- [Source] - [Index] -- S([Video Start Time]) -- E([Video End Time]) -- FRAME([Video Frame Time]) -- [Video Frame Number] -- [Datetime]",
         {
           title: "Post",
           poster: "@user",
           source: "x.com",
           index: "02",
-          startTime: "00.00.10.000",
-          endTime: "00.00.30.000",
-          frameTime: "00.00.15.500",
-          frameNumber: "465",
+          videoStartTime: "00.00.10.000",
+          videoEndTime: "00.00.30.000",
+          videoFrameTime: "00.00.15.500",
+          videoFrameNumber: "465",
+          datetime: "2026.08.18-17.49.04",
         },
       ),
     ).toBe(
-      "@user -- Post -- x.com - 02 -- S(00.00.10.000) -- E(00.00.30.000) -- FRAME(00.00.15.500) -- 465",
+      "@user -- Post -- x.com - 02 -- S(00.00.10.000) -- E(00.00.30.000) -- FRAME(00.00.15.500) -- 465 -- 2026.08.18-17.49.04",
     );
   });
 
-  it("applies time-segment tokens and falls back to empty values", () => {
+  it("drops removed time-segment tokens instead of leaving them in filenames", () => {
     expect(
       applyFilenameTemplate(
         "[Title] -- H[Hours] M[Minutes] S[Seconds] MS[Milliseconds] -- S([Start Hours].[Start Minutes].[Start Seconds]) -- E([End Hours].[End Minutes].[End Seconds])",
@@ -285,12 +286,12 @@ describe("filename source tokens", () => {
           endSeconds: "30",
         },
       ),
-    ).toBe("Post -- H00 M01 S23 MS500 -- S(00.00.10) -- E(00.00.30)");
+    ).toBe("Post -- H M S MS -- S(..) -- E(..)");
   });
 
   it("drops unresolved bracket tokens instead of leaving them in filenames", () => {
     expect(
-      applyFilenameTemplate("[Title] -- [Missing Token] -- FRAME[Frame Number]", {
+      applyFilenameTemplate("[Title] -- [Missing Token] -- FRAME[Video Frame Number]", {
         title: "Post",
       }),
     ).toBe("Post -- FRAME");

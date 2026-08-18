@@ -158,6 +158,16 @@ export const DEFAULT_MULTIPLE_FILENAME_SCHEME = "uploader-title-source-index";
 export const DEFAULT_RANGE_FILENAME_SCHEME = "uploader-title-range-source";
 export const DEFAULT_THUMBNAIL_FILENAME_SCHEME = "uploader-title-source-thumbnail";
 export const DEFAULT_FRAME_FILENAME_SCHEME = "uploader-title-frame-source";
+export const DEFAULT_BEST_AVAILABLE_MAX_HEIGHT = 0;
+export const BEST_AVAILABLE_MAX_HEIGHT_OPTIONS = [
+  { value: 0, label: "No cap" },
+  { value: 480, label: "480p" },
+  { value: 720, label: "720p" },
+  { value: 1080, label: "1080p" },
+  { value: 1440, label: "1440p" },
+  { value: 2160, label: "2160p / 4K" },
+  { value: 4320, label: "4320p / 8K" },
+];
 
 export const BUILTIN_FILENAME_SCHEMES = [
   {
@@ -443,6 +453,13 @@ export function resolveFrameFilenameMode(s) {
   const raw = s.frameFilenameMode ?? s.videoFrameFilenameMode;
   if (raw === "default" || raw === undefined) return DEFAULT_FRAME_FILENAME_SCHEME;
   return raw;
+}
+
+export function resolveBestAvailableMaxHeight(value) {
+  const n = Number(value);
+  return BEST_AVAILABLE_MAX_HEIGHT_OPTIONS.some((opt) => opt.value === n)
+    ? n
+    : DEFAULT_BEST_AVAILABLE_MAX_HEIGHT;
 }
 
 // migrateFilenameSettings collapses legacy filename-mode keys into the

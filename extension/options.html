@@ -57,6 +57,22 @@
     </div>
     <div id="err" class="err" hidden></div>
 
+    <h2>Best available quality limit</h2>
+    <div class="specific-body quality-limit-body" aria-disabled="false" style="margin-left: 0">
+      <label class="quality-limit-control">
+        <span id="best-quality-cap-label">No cap</span>
+        <input
+          id="best-quality-cap"
+          type="range"
+          min="0"
+          max="6"
+          step="1"
+          list="quality-cap-marks"
+        />
+        <datalist id="quality-cap-marks"></datalist>
+      </label>
+    </div>
+
     <h2>Twitter / X cookies</h2>
     <label class="radio-row">
       <input type="radio" name="twitter-cookies-mode" value="auto" />

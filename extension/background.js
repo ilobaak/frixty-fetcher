@@ -6,6 +6,7 @@ import {
   shortcodeToMediaId,
   computeSyndicationToken,
   IG_APP_ID,
+  DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   DEFAULT_FILENAME_SCHEME,
   applyFilenameTemplate,
   filenameTemplateForMode,
@@ -14,6 +15,7 @@ import {
   sourceTokenFromUrl,
   buildSafeFilename,
   basenameFromUrl,
+  resolveBestAvailableMaxHeight,
 } from "./shared.js";
 import { getFacebookStoryFromInterceptor, getFacebookDomInfo } from "./facebook.js";
 import {
@@ -303,8 +305,14 @@ async function readIntegratedSetting(url) {
   return {
     category,
     customFilenameSchemes: normalizeCustomFilenameSchemes(settings.customFilenameSchemes),
+    bestAvailableMaxHeight: resolveBestAvailableMaxHeight(settings.bestAvailableMaxHeight),
     ...all[category],
   };
+}
+
+async function readBestAvailableMaxHeight() {
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  return resolveBestAvailableMaxHeight(settings.bestAvailableMaxHeight);
 }
 
 async function prefetchActiveTabMedia(tabId, url) {
@@ -386,7 +394,7 @@ async function startIntegratedPayloadDownload(tabId, payload) {
       action: "download",
       jobId,
       url,
-      selection: { kind: "combined", height: 0 },
+      selection: { kind: "combined", height: setting.bestAvailableMaxHeight || 0 },
       destDir: "",
       askPath: false,
       filenameTemplate: baseNoExt ? `${baseNoExt.replace(/%/g, "%%")}.%(ext)s` : "",
@@ -808,11 +816,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "tiktok:fetch-and-download") {
     // Content-script grab-button flow: start a headless download
     // directly from the SW, skipping the popup entirely. yt-dlp's
-    // default format selection (kind: "combined", height: 0 → best
-    // available mp4) gives us one-click-best-quality with no picker
-    // UI. Progress/done/error events land in onHostMessage and get
-    // relayed to the originating tab via chrome.tabs.sendMessage so
-    // the grab button can render its own spinner + result state.
+    // default format selection gives us one-click best-quality with
+    // no picker UI. The user's saved Best available cap still applies
+    // when set. Progress/done/error events land in onHostMessage and
+    // get relayed to the originating tab via chrome.tabs.sendMessage
+    // so the grab button can render its own spinner + result state.
     const url = typeof msg.url === "string" ? msg.url : "";
     const tabId = sender.tab?.id;
     if (!url || !tabId) {
@@ -831,12 +839,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         error: null,
       });
       const useCookies = await tiktokUseCookiesInitial();
+      const bestAvailableMaxHeight = await readBestAvailableMaxHeight();
       const cookiesText = useCookies ? await readSiteCookiesText(url) : "";
       ensureHostPort().postMessage({
         action: "download",
         jobId,
         url,
-        selection: { kind: "combined", height: 0 },
+        selection: {
+          kind: "combined",
+          height: bestAvailableMaxHeight || DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
+        },
         destDir: "",
         askPath: false,
         defaultFileName: "",

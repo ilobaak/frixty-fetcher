@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const popupSource = readFileSync(resolve(here, "../extension/popup.js"), "utf8");
 const optionsSource = readFileSync(resolve(here, "../extension/options.js"), "utf8");
+const backgroundSource = readFileSync(resolve(here, "../extension/background.js"), "utf8");
 
 function functionBody(name) {
   const start = popupSource.indexOf(`function ${name}(`);
@@ -123,6 +124,24 @@ describe("popup naming modes", () => {
     expect(functionBody("scheduleRangePreview")).toContain("rangePreviewTimestamp");
   });
 
+  it("caps Best available downloads with the saved max-quality setting", () => {
+    expect(functionBody("effectiveBestAvailableHeight")).toContain(
+      "saveSettings.bestAvailableMaxHeight",
+    );
+    expect(functionBody("startDownload")).toContain("effectiveBestAvailableHeight");
+    expect(functionBody("startRangeDownload")).toContain("effectiveBestAvailableHeight");
+    expect(functionBody("startGalleryDownload")).toContain(
+      "pickVariantUrl(item, effectiveBestAvailableHeight(maxHeight))",
+    );
+    expect(functionBody("startGallerySingleItem")).toContain(
+      "pickVariantUrl(item, effectiveBestAvailableHeight(maxHeight || 0))",
+    );
+    expect(backgroundSource).toContain(
+      'selection: { kind: "combined", height: setting.bestAvailableMaxHeight || 0 }',
+    );
+    expect(backgroundSource).toContain("readBestAvailableMaxHeight");
+  });
+
   it("implements title-poster folder names", () => {
     expect(functionBody("currentAlbumName")).toContain('mode === "title-uploader"');
     expect(functionBody("defaultAlbumName")).toContain('mode === "title-uploader"');
@@ -138,8 +157,11 @@ describe("options filename controls", () => {
     );
     expect(optionsSource).toContain('const frameFilenameModeEl = el("frame-filename-mode")');
     expect(optionsSource).toContain('const timeTokenFormatEl = el("time-token-format")');
+    expect(optionsSource).toContain('const bestQualityCapEl = el("best-quality-cap")');
     expect(optionsSource).toContain("function renderFilenameMode()");
     expect(optionsSource).toContain("function renderTimeTokenFormat()");
+    expect(optionsSource).toContain("function renderBestAvailableQualityCap()");
+    expect(optionsSource).toContain("bestAvailableMaxHeight");
     expect(optionsSource).toContain('new Option("Downloads media", "download")');
     expect(optionsSource).toContain('new Option("Fetches to extension", "fetch")');
     expect(optionsSource).toContain("integrated-button-image");

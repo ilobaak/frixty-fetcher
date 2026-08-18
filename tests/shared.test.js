@@ -26,9 +26,12 @@ import {
   DEFAULT_RANGE_FILENAME_SCHEME,
   DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   DEFAULT_FRAME_FILENAME_SCHEME,
+  DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
+  BEST_AVAILABLE_MAX_HEIGHT_OPTIONS,
   filenameSchemeOptions,
   applyFilenameTemplate,
   sourceTokenFromUrl,
+  resolveBestAvailableMaxHeight,
   WIN_RESERVED,
   isKnownHost,
   SUPPORTED_HOSTS,
@@ -218,6 +221,18 @@ describe("filename mode defaults", () => {
     }).map((o) => o.value);
     expect(videoImage).toContain(DEFAULT_THUMBNAIL_FILENAME_SCHEME);
     expect(videoImage).toContain(DEFAULT_FRAME_FILENAME_SCHEME);
+  });
+});
+
+describe("best available quality limits", () => {
+  it("defaults to no cap and accepts only supported slider stops", () => {
+    expect(DEFAULT_BEST_AVAILABLE_MAX_HEIGHT).toBe(0);
+    expect(BEST_AVAILABLE_MAX_HEIGHT_OPTIONS.map((o) => o.value)).toEqual([
+      0, 480, 720, 1080, 1440, 2160, 4320,
+    ]);
+    expect(resolveBestAvailableMaxHeight(1080)).toBe(1080);
+    expect(resolveBestAvailableMaxHeight("2160")).toBe(2160);
+    expect(resolveBestAvailableMaxHeight(999)).toBe(DEFAULT_BEST_AVAILABLE_MAX_HEIGHT);
   });
 });
 

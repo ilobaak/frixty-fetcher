@@ -9,6 +9,8 @@ import {
 } from "./popup-helpers.js";
 
 import {
+  BEST_AVAILABLE_MAX_HEIGHT_OPTIONS,
+  DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   DEFAULT_FRAME_FILENAME_SCHEME,
   DEFAULT_FILENAME_SCHEME,
   DEFAULT_MULTIPLE_FILENAME_SCHEME,
@@ -17,6 +19,7 @@ import {
   filenameSchemeOptions,
   migrateFilenameSettings,
   normalizeCustomFilenameSchemes,
+  resolveBestAvailableMaxHeight,
   resolveFrameFilenameMode,
   resolveFilenameMode,
   resolveMultipleFilenameMode,
@@ -35,6 +38,9 @@ const status = el("status");
 const errEl = el("err");
 const specificBody = el("specific-body");
 const lastBody = el("last-body");
+const bestQualityCapEl = el("best-quality-cap");
+const bestQualityCapLabelEl = el("best-quality-cap-label");
+const qualityCapMarksEl = el("quality-cap-marks");
 const versionEl = el("ytdlp-version");
 const checkUpdatesBtn = el("check-updates");
 const updateResultEl = el("update-result");
@@ -75,6 +81,7 @@ let current = {
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
+  bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   customFilenameSchemes: [],
   integratedButtonSettings: {},
   twitterCookiesMode: "always",
@@ -218,6 +225,7 @@ async function load() {
   current.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
   current.frameFilenameMode = resolveFrameFilenameMode(s);
   current.timeTokenFormat = resolveTimeTokenFormat(s.timeTokenFormat);
+  current.bestAvailableMaxHeight = resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight);
   current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   current.integratedButtonSettings = migrateIntegratedButtonSettings(s.integratedButtonSettings || {});
   current.twitterCookiesMode = s.twitterCookiesMode ?? "always";
@@ -231,6 +239,7 @@ async function load() {
   renderRangeFilenameMode();
   renderVideoImageFilenameModes();
   renderTimeTokenFormat();
+  renderBestAvailableQualityCap();
   renderFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
@@ -288,6 +297,7 @@ async function save() {
   current.thumbnailFilenameMode = thumbnailFilenameModeEl?.value || DEFAULT_THUMBNAIL_FILENAME_SCHEME;
   current.frameFilenameMode = frameFilenameModeEl?.value || DEFAULT_FRAME_FILENAME_SCHEME;
   current.timeTokenFormat = resolveTimeTokenFormat(timeTokenFormatEl?.value);
+  current.bestAvailableMaxHeight = readBestAvailableQualityCap();
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
   current.youtubeCookiesMode = document.querySelector('input[name="youtube-cookies-mode"]:checked')?.value ?? "always";
@@ -309,6 +319,7 @@ async function save() {
       thumbnailFilenameMode: current.thumbnailFilenameMode,
       frameFilenameMode: current.frameFilenameMode,
       timeTokenFormat: current.timeTokenFormat,
+      bestAvailableMaxHeight: current.bestAvailableMaxHeight,
       customFilenameSchemes: current.customFilenameSchemes,
       integratedButtonSettings: current.integratedButtonSettings,
       twitterCookiesMode: current.twitterCookiesMode,
@@ -385,6 +396,45 @@ function renderTimeTokenFormat() {
   }
   timeTokenFormatEl.value = previous;
   current.timeTokenFormat = timeTokenFormatEl.value;
+}
+
+function qualityCapIndexForHeight(height) {
+  const resolved = resolveBestAvailableMaxHeight(height);
+  return Math.max(
+    0,
+    BEST_AVAILABLE_MAX_HEIGHT_OPTIONS.findIndex((opt) => opt.value === resolved),
+  );
+}
+
+function qualityCapLabelForIndex(index) {
+  return BEST_AVAILABLE_MAX_HEIGHT_OPTIONS[index]?.label || BEST_AVAILABLE_MAX_HEIGHT_OPTIONS[0].label;
+}
+
+function renderBestAvailableQualityCap() {
+  if (!bestQualityCapEl || !bestQualityCapLabelEl) return;
+  bestQualityCapEl.min = "0";
+  bestQualityCapEl.max = String(BEST_AVAILABLE_MAX_HEIGHT_OPTIONS.length - 1);
+  bestQualityCapEl.step = "1";
+  if (qualityCapMarksEl && qualityCapMarksEl.childElementCount === 0) {
+    for (const [idx, opt] of BEST_AVAILABLE_MAX_HEIGHT_OPTIONS.entries()) {
+      const option = document.createElement("option");
+      option.value = String(idx);
+      option.label = opt.label;
+      qualityCapMarksEl.append(option);
+    }
+  }
+  bestQualityCapEl.value = String(qualityCapIndexForHeight(current.bestAvailableMaxHeight));
+  const update = () => {
+    bestQualityCapLabelEl.textContent = qualityCapLabelForIndex(Number(bestQualityCapEl.value));
+  };
+  update();
+  bestQualityCapEl.oninput = update;
+}
+
+function readBestAvailableQualityCap() {
+  if (!bestQualityCapEl) return DEFAULT_BEST_AVAILABLE_MAX_HEIGHT;
+  const idx = Number(bestQualityCapEl.value);
+  return resolveBestAvailableMaxHeight(BEST_AVAILABLE_MAX_HEIGHT_OPTIONS[idx]?.value);
 }
 
 function migrateIntegratedButtonSettings(raw) {

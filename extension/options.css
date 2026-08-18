@@ -97,6 +97,31 @@ button:disabled {
   padding: 5px 8px;
   font: inherit;
 }
+.quality-limit-body {
+  display: block;
+}
+.quality-limit-control {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.quality-limit-control span {
+  color: #555;
+  font-size: 13px;
+  font-weight: 700;
+}
+.quality-limit-control input[type="range"] {
+  width: 100%;
+  accent-color: #1a73e8;
+}
+.quality-limit-control datalist {
+  display: flex;
+  justify-content: space-between;
+  grid-column: 2;
+  color: #666;
+  font-size: 11px;
+}
 .integrated-category {
   margin-left: 0;
   display: grid;

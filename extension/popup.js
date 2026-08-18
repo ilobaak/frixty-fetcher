@@ -38,7 +38,9 @@ import {
   resolveRangeFilenameMode,
   resolveThumbnailFilenameMode,
   resolveFrameFilenameMode,
+  resolveBestAvailableMaxHeight,
   migrateFilenameSettings,
+  DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   DEFAULT_FILENAME_SCHEME,
   DEFAULT_MULTIPLE_FILENAME_SCHEME,
   DEFAULT_RANGE_FILENAME_SCHEME,
@@ -266,6 +268,7 @@ const saveSettings = {
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
+  bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
   // video, single image, multi-item gallery). Replaces the older
@@ -331,6 +334,7 @@ async function init() {
   saveSettings.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
   saveSettings.frameFilenameMode = resolveFrameFilenameMode(s);
   saveSettings.timeTokenFormat = s.timeTokenFormat || DEFAULT_TIME_TOKEN_FORMAT;
+  saveSettings.bestAvailableMaxHeight = resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight);
   saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
   // flag inverts: "confirm-each = true" meant "prompt per file" which
@@ -1882,6 +1886,12 @@ function currentKind() {
   return el("kind").value;
 }
 
+function effectiveBestAvailableHeight(selectedHeight) {
+  const height = Number(selectedHeight) || 0;
+  if (height > 0) return height;
+  return saveSettings.bestAvailableMaxHeight || 0;
+}
+
 function renderSaveModeHint(targetId = "save-mode-hint") {
   const hint = el(targetId);
   if (!hint) return;
@@ -1991,7 +2001,7 @@ function fillFilenameSelect(sel, { includeGalleryOnly = true, includeOriginal = 
 
 function startDownload() {
   const kind = currentKind();
-  const height = parseInt(el("quality").value, 10) || 0;
+  const height = effectiveBestAvailableHeight(parseInt(el("quality").value, 10) || 0);
   const includeSubs = el("include-subs")?.checked === true;
   const fnMode = selectedVideoFilenameMode();
   const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
@@ -2157,7 +2167,7 @@ function startRangeDownload() {
     return;
   }
   const kind = currentKind();
-  const height = parseInt(el("quality").value, 10) || 0;
+  const height = effectiveBestAvailableHeight(parseInt(el("quality").value, 10) || 0);
   const includeSubs = false;
   const fnMode = saveSettings.rangeFilenameMode || DEFAULT_RANGE_FILENAME_SCHEME;
   const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
@@ -3057,7 +3067,7 @@ async function startGalleryDownload() {
       const effectiveExt = kind === "audio" ? "m4a" : item.ext;
       const itemForName = kind === "audio" ? { ...item, ext: "m4a" } : item;
       return {
-        url: pickVariantUrl(item, maxHeight),
+        url: pickVariantUrl(item, effectiveBestAvailableHeight(maxHeight)),
         ext: effectiveExt,
         name: buildGalleryItemName(itemForName, idx, total, digits, filenameMode, handle, customName),
         kind: kind || "combined",
@@ -3174,7 +3184,7 @@ async function startCaptureListDownload(selected) {
       cmd: "download",
       jobId,
       url: ytdlpUrl,
-      selection: { kind: kind || "combined", height: maxHeight || 0 },
+      selection: { kind: kind || "combined", height: effectiveBestAvailableHeight(maxHeight) },
       useCookies: true,  // captures come from FB/Twitter/IG, all need auth
     };
     if (!saveSettings.downloadAutomatically) {
@@ -3306,7 +3316,7 @@ async function startGallerySingleItem(item, filenameMode, maxHeight, kind, custo
   const msg = {
     cmd: "downloadUrl",
     jobId: crypto.randomUUID(),
-    url: pickVariantUrl(item, maxHeight || 0),
+    url: pickVariantUrl(item, effectiveBestAvailableHeight(maxHeight || 0)),
     pageUrl: tabUrl,
     defaultFileName: fileName,
     kind: kind || "combined",

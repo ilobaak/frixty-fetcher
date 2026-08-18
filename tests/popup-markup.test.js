@@ -20,6 +20,14 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="multiple-filename-mode"');
   });
 
+  it("offers a Best available quality limit slider in options", () => {
+    expect(optionsHtml).toContain("<h2>Best available quality limit</h2>");
+    expect(optionsHtml).toContain('id="best-quality-cap"');
+    expect(optionsHtml).toContain('type="range"');
+    expect(optionsHtml).toContain('id="best-quality-cap-label"');
+    expect(optionsHtml).toContain('id="quality-cap-marks"');
+  });
+
   it("offers gallery media-type selection controls", () => {
     expect(popupHtml).toContain('id="select-videos"');
     expect(popupHtml).toContain("Select Videos");

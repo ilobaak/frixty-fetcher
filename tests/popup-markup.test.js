@@ -105,6 +105,13 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="thumbnail-filename-mode"');
     expect(optionsHtml).toContain('id="frame-filename-mode"');
     expect(optionsHtml).toContain('id="time-token-format"');
+    expect(optionsHtml).toContain('id="custom-time-formats"');
+    expect(optionsHtml).toContain('id="custom-time-format-name"');
+    expect(optionsHtml).toContain('id="custom-time-format-pattern"');
+    expect(optionsHtml).toContain('id="add-custom-time-format"');
+    expect(optionsHtml).toContain("Custom time formats can use");
+    expect(optionsHtml).toContain('id="reset-options"');
+    expect(optionsHtml).toContain("Reset options to default");
     expect(optionsHtml).toContain("Thumbnail Download");
     expect(optionsHtml).toContain("Frame Download");
     expect(optionsHtml).toContain("Default Scheme");
@@ -126,5 +133,11 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain("Site token");
     expect(optionsHtml).toContain("Video range start using the selected time format");
     expect(optionsHtml).toContain('"Midnight Train Review"');
+    expect(optionsHtml.indexOf("<h2>Integrated download buttons</h2>")).toBeLessThan(
+      optionsHtml.indexOf("<h2>Time token format</h2>"),
+    );
+    expect(optionsHtml.indexOf("<h2>Time token format</h2>")).toBeLessThan(
+      optionsHtml.indexOf("<h2>Custom filename schemes</h2>"),
+    );
   });
 });

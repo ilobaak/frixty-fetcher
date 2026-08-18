@@ -163,12 +163,6 @@
       <select id="frame-filename-mode"></select>
     </label>
 
-    <h2>Time token format</h2>
-    <label class="card-control">
-      <span>Format</span>
-      <select id="time-token-format"></select>
-    </label>
-
     <h2>Default Download Filenames</h2>
     <label class="card-control">
       <span>Default scheme - single download</span>
@@ -181,6 +175,22 @@
 
     <h2>Integrated download buttons</h2>
     <div id="integrated-categories"></div>
+
+    <h2>Time token format</h2>
+    <label class="card-control">
+      <span>Format</span>
+      <select id="time-token-format"></select>
+    </label>
+    <div id="custom-time-formats"></div>
+    <div class="specific-body custom-format-form" aria-disabled="false" style="margin-left: 0">
+      <input id="custom-time-format-name" type="text" placeholder="Format name" />
+      <input id="custom-time-format-pattern" type="text" placeholder="HH.MM.SS.milliseconds" />
+      <button id="add-custom-time-format" type="button">Add format</button>
+    </div>
+    <p class="muted" style="margin-top: 4px">
+      Custom time formats can use <code>HH</code>, <code>MM</code>, <code>SS</code>, and
+      <code>milliseconds</code>.
+    </p>
 
     <h2>Custom filename schemes</h2>
     <div id="custom-schemes"></div>
@@ -317,6 +327,10 @@
           >.</span
         >
       </div>
+    </div>
+
+    <div class="reset-options-row">
+      <button id="reset-options" type="button" class="danger">Reset options to default</button>
     </div>
 
     <script type="module" src="options.js"></script>

@@ -11,6 +11,7 @@ import {
   frameTimestampSelection,
   parseTimestamp,
   rangePreviewTimestamp,
+  normalizeCustomTimeTokenFormats,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
   validateTimestamp,
@@ -77,6 +78,22 @@ describe("timestamp helpers", () => {
     expect(filenameTimeToken(3723.25, "hh:mm:ss.mmm")).toBe("01:02:03.250");
     expect(filenameTimeToken(3723.25, 'hh:mm"ss')).toBe('01:02"03');
     expect(filenameTimeToken(3723.25, "hh.mm.ss")).toBe("01.02.03");
+  });
+
+  it("formats filename time tokens with custom patterns", () => {
+    const custom = [{ id: "compact", name: "Compact", pattern: "HH_MM_SS_milliseconds" }];
+    expect(filenameTimeToken(3723.25, "custom:compact", custom)).toBe("01_02_03_250");
+    expect(filenameTimeToken(3723.25, "custom:missing", custom)).toBe("01.02.03.250");
+  });
+
+  it("normalizes custom time token formats", () => {
+    expect(
+      normalizeCustomTimeTokenFormats([
+        { id: "a", name: "Readable", pattern: 'HH.MM"SS' },
+        { id: "a", name: "Duplicate", pattern: "HH" },
+        { id: "b", name: "", pattern: "MM" },
+      ]),
+    ).toEqual([{ id: "a", name: "Readable", pattern: 'HH.MM"SS' }]);
   });
 
   it("returns filename time segments for custom tokens", () => {

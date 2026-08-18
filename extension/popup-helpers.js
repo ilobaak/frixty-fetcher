@@ -71,6 +71,21 @@ export const TIME_TOKEN_FORMAT_OPTIONS = [
   { value: "hh.mm.ss", label: "HH.MM.SS", example: "01.02.03" },
 ];
 
+export function normalizeCustomTimeTokenFormats(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const entry of raw) {
+    const id = String(entry?.id || "").trim();
+    const name = String(entry?.name || "").trim();
+    const pattern = String(entry?.pattern || "").trim();
+    if (!id || !name || !pattern || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name, pattern });
+  }
+  return out;
+}
+
 export function filenameTimeParts(seconds) {
   const n = Number(seconds);
   if (!Number.isFinite(n) || n < 0) return null;
@@ -87,10 +102,21 @@ export function filenameTimeParts(seconds) {
   };
 }
 
-export function filenameTimeToken(seconds, format = DEFAULT_TIME_TOKEN_FORMAT) {
+export function filenameTimeToken(seconds, format = DEFAULT_TIME_TOKEN_FORMAT, customFormats = []) {
   const parts = filenameTimeParts(seconds);
   if (!parts) return "";
   const { hours, minutes, seconds: secs, milliseconds } = parts;
+  if (typeof format === "string" && format.startsWith("custom:")) {
+    const id = format.slice("custom:".length);
+    const custom = normalizeCustomTimeTokenFormats(customFormats).find((entry) => entry.id === id);
+    if (custom) {
+      return custom.pattern
+        .replace(/milliseconds/g, milliseconds)
+        .replace(/HH/g, hours)
+        .replace(/MM/g, minutes)
+        .replace(/SS/g, secs);
+    }
+  }
   if (format === "hh-mm-ss-mmm") return `${hours}-${minutes}-${secs}-${milliseconds}`;
   if (format === "hh:mm:ss.mmm") return `${hours}:${minutes}:${secs}.${milliseconds}`;
   if (format === 'hh:mm"ss') return `${hours}:${minutes}"${secs}`;

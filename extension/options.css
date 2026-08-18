@@ -75,6 +75,14 @@ button.primary {
 button.primary:hover:not(:disabled) {
   background: #1765cc;
 }
+button.danger {
+  background: #b3261e;
+  border-color: #b3261e;
+  color: #fff;
+}
+button.danger:hover:not(:disabled) {
+  background: #982018;
+}
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -164,6 +172,20 @@ button:disabled {
 }
 .integrated-filename-mode {
   min-width: 270px;
+}
+.custom-format-form input {
+  min-width: 0;
+  padding: 6px 8px;
+  font: inherit;
+}
+.custom-scheme-row,
+.custom-time-format-row {
+  justify-content: space-between;
+}
+.reset-options-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 28px 0 0;
 }
 .token-list {
   display: grid;

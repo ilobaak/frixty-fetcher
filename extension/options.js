@@ -5,11 +5,14 @@
 
 import {
   DEFAULT_TIME_TOKEN_FORMAT,
+  filenameTimeToken,
+  normalizeCustomTimeTokenFormats,
   TIME_TOKEN_FORMAT_OPTIONS,
 } from "./popup-helpers.js";
 
 import {
   BEST_AVAILABLE_MAX_HEIGHT_OPTIONS,
+  BUILTIN_FILENAME_SCHEMES,
   DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   DEFAULT_FRAME_FILENAME_SCHEME,
   DEFAULT_FILENAME_SCHEME,
@@ -54,10 +57,15 @@ const rangeFilenameModeEl = el("range-filename-mode");
 const thumbnailFilenameModeEl = el("thumbnail-filename-mode");
 const frameFilenameModeEl = el("frame-filename-mode");
 const timeTokenFormatEl = el("time-token-format");
+const customTimeFormatsEl = el("custom-time-formats");
+const customTimeFormatNameEl = el("custom-time-format-name");
+const customTimeFormatPatternEl = el("custom-time-format-pattern");
+const addCustomTimeFormatBtn = el("add-custom-time-format");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
 const customSchemeTemplateEl = el("custom-scheme-template");
 const addCustomSchemeBtn = el("add-custom-scheme");
+const resetOptionsBtn = el("reset-options");
 
 const INTEGRATED_CATEGORIES = [
   ["reddit", "Reddit", true],
@@ -81,6 +89,7 @@ let current = {
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
+  customTimeTokenFormats: [],
   bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   customFilenameSchemes: [],
   integratedButtonSettings: {},
@@ -91,6 +100,37 @@ let current = {
   tiktokCookiesMode: "always",
 };
 let port;
+
+function defaultIntegratedButtonSettings() {
+  return migrateIntegratedButtonSettings({});
+}
+
+function defaultOptionsSettings() {
+  return {
+    saveMode: DEFAULT_MODE,
+    specificDestDir: "",
+    lastDir: "",
+    filenameMode: DEFAULT_FILENAME_SCHEME,
+    multipleFilenameMode: DEFAULT_MULTIPLE_FILENAME_SCHEME,
+    rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
+    thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+    frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
+    timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
+    customTimeTokenFormats: [],
+    bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
+    customFilenameSchemes: [],
+    integratedButtonSettings: defaultIntegratedButtonSettings(),
+    downloadAutomatically: false,
+    destinationDir: "",
+    createFolder: true,
+    folderMode: DEFAULT_FILENAME_SCHEME,
+    twitterCookiesMode: "always",
+    youtubeCookiesMode: "always",
+    instagramCookiesMode: "always",
+    facebookCookiesMode: "always",
+    tiktokCookiesMode: "always",
+  };
+}
 
 function connect() {
   port = chrome.runtime.connect({ name: "settings" });
@@ -224,6 +264,7 @@ async function load() {
   current.rangeFilenameMode = resolveRangeFilenameMode(s);
   current.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
   current.frameFilenameMode = resolveFrameFilenameMode(s);
+  current.customTimeTokenFormats = normalizeCustomTimeTokenFormats(s.customTimeTokenFormats);
   current.timeTokenFormat = resolveTimeTokenFormat(s.timeTokenFormat);
   current.bestAvailableMaxHeight = resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight);
   current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
@@ -239,6 +280,7 @@ async function load() {
   renderRangeFilenameMode();
   renderVideoImageFilenameModes();
   renderTimeTokenFormat();
+  renderCustomTimeFormats();
   renderBestAvailableQualityCap();
   renderFilenameMode();
   renderCustomSchemes();
@@ -297,6 +339,7 @@ async function save() {
   current.thumbnailFilenameMode = thumbnailFilenameModeEl?.value || DEFAULT_THUMBNAIL_FILENAME_SCHEME;
   current.frameFilenameMode = frameFilenameModeEl?.value || DEFAULT_FRAME_FILENAME_SCHEME;
   current.timeTokenFormat = resolveTimeTokenFormat(timeTokenFormatEl?.value);
+  current.customTimeTokenFormats = normalizeCustomTimeTokenFormats(current.customTimeTokenFormats);
   current.bestAvailableMaxHeight = readBestAvailableQualityCap();
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
@@ -319,6 +362,7 @@ async function save() {
       thumbnailFilenameMode: current.thumbnailFilenameMode,
       frameFilenameMode: current.frameFilenameMode,
       timeTokenFormat: current.timeTokenFormat,
+      customTimeTokenFormats: current.customTimeTokenFormats,
       bestAvailableMaxHeight: current.bestAvailableMaxHeight,
       customFilenameSchemes: current.customFilenameSchemes,
       integratedButtonSettings: current.integratedButtonSettings,
@@ -382,9 +426,15 @@ function renderVideoImageFilenameModes() {
 }
 
 function resolveTimeTokenFormat(value) {
-  return TIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.value === value)
-    ? value
-    : DEFAULT_TIME_TOKEN_FORMAT;
+  if (TIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.value === value)) return value;
+  if (
+    typeof value === "string" &&
+    value.startsWith("custom:") &&
+    current.customTimeTokenFormats.some((fmt) => `custom:${fmt.id}` === value)
+  ) {
+    return value;
+  }
+  return DEFAULT_TIME_TOKEN_FORMAT;
 }
 
 function renderTimeTokenFormat() {
@@ -392,10 +442,75 @@ function renderTimeTokenFormat() {
   const previous = resolveTimeTokenFormat(timeTokenFormatEl.value || current.timeTokenFormat);
   timeTokenFormatEl.innerHTML = "";
   for (const opt of TIME_TOKEN_FORMAT_OPTIONS) {
-    timeTokenFormatEl.add(new Option(`${opt.label} - example "${opt.example}"`, opt.value));
+    timeTokenFormatEl.add(new Option(opt.label, opt.value));
+  }
+  for (const fmt of current.customTimeTokenFormats) {
+    timeTokenFormatEl.add(new Option(fmt.name, `custom:${fmt.id}`));
   }
   timeTokenFormatEl.value = previous;
   current.timeTokenFormat = timeTokenFormatEl.value;
+}
+
+function renderCustomTimeFormats() {
+  if (!customTimeFormatsEl) return;
+  customTimeFormatsEl.innerHTML = "";
+  if (current.customTimeTokenFormats.length === 0) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No custom time formats saved.";
+    customTimeFormatsEl.append(p);
+    return;
+  }
+  for (const fmt of current.customTimeTokenFormats) {
+    const row = document.createElement("div");
+    row.className = "specific-body custom-time-format-row";
+    const name = document.createElement("span");
+    name.textContent = `${fmt.name}: ${fmt.pattern} (${filenameTimeToken(3723.25, `custom:${fmt.id}`, [fmt])})`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger";
+    remove.textContent = "Remove";
+    remove.onclick = () => {
+      current.customTimeTokenFormats = current.customTimeTokenFormats.filter((entry) => entry.id !== fmt.id);
+      if (current.timeTokenFormat === `custom:${fmt.id}`) current.timeTokenFormat = DEFAULT_TIME_TOKEN_FORMAT;
+      renderTimeTokenFormat();
+      renderCustomTimeFormats();
+    };
+    row.append(name, remove);
+    customTimeFormatsEl.append(row);
+  }
+}
+
+function customTimeFormatNameTaken(name) {
+  const target = name.trim().toLowerCase();
+  if (!target) return false;
+  return (
+    TIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.label.toLowerCase() === target) ||
+    current.customTimeTokenFormats.some((fmt) => fmt.name.toLowerCase() === target)
+  );
+}
+
+function addCustomTimeFormat() {
+  const name = String(customTimeFormatNameEl?.value || "").trim();
+  const pattern = String(customTimeFormatPatternEl?.value || "").trim();
+  if (!name || !pattern) {
+    showError("Enter a name and time format.");
+    return;
+  }
+  if (customTimeFormatNameTaken(name)) {
+    showError("That time format name already exists.");
+    return;
+  }
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  current.customTimeTokenFormats = normalizeCustomTimeTokenFormats([
+    ...current.customTimeTokenFormats,
+    { id, name, pattern },
+  ]);
+  customTimeFormatNameEl.value = "";
+  customTimeFormatPatternEl.value = "";
+  hideError();
+  renderTimeTokenFormat();
+  renderCustomTimeFormats();
 }
 
 function qualityCapIndexForHeight(height) {
@@ -525,6 +640,7 @@ function renderCustomSchemes() {
     name.textContent = `${scheme.name}: ${scheme.template}`;
     const remove = document.createElement("button");
     remove.type = "button";
+    remove.className = "danger";
     remove.textContent = "Remove";
     remove.onclick = () => {
       current.customFilenameSchemes = current.customFilenameSchemes.filter((s) => s.id !== scheme.id);
@@ -539,11 +655,24 @@ function renderCustomSchemes() {
   }
 }
 
+function filenameSchemeNameTaken(name) {
+  const target = name.trim().toLowerCase();
+  if (!target) return false;
+  return (
+    BUILTIN_FILENAME_SCHEMES.some((scheme) => scheme.label.toLowerCase() === target) ||
+    current.customFilenameSchemes.some((scheme) => scheme.name.toLowerCase() === target)
+  );
+}
+
 function addCustomScheme() {
   const name = String(customSchemeNameEl?.value || "").trim();
   const template = String(customSchemeTemplateEl?.value || "").trim();
   if (!name || !template) {
     showError("Enter a name and filename scheme.");
+    return;
+  }
+  if (filenameSchemeNameTaken(name)) {
+    showError("That filename scheme name already exists.");
     return;
   }
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -559,6 +688,40 @@ function addCustomScheme() {
   renderFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
+}
+
+async function resetOptionsToDefaults() {
+  const ok = confirm(
+    "Reset all options to their defaults? This cannot be undone and resets every option back to its default value.",
+  );
+  if (!ok) return;
+  const defaults = defaultOptionsSettings();
+  await chrome.storage.local.set({ settings: defaults });
+  Object.assign(current, defaults);
+  const modeRadio = document.querySelector(`input[name="saveMode"][value="${current.saveMode}"]`);
+  if (modeRadio) modeRadio.checked = true;
+  for (const [group, value] of [
+    ["twitter-cookies-mode", current.twitterCookiesMode],
+    ["youtube-cookies-mode", current.youtubeCookiesMode],
+    ["instagram-cookies-mode", current.instagramCookiesMode],
+    ["facebook-cookies-mode", current.facebookCookiesMode],
+    ["tiktok-cookies-mode", current.tiktokCookiesMode],
+  ]) {
+    const radio = document.querySelector(`input[name="${group}"][value="${value}"]`);
+    if (radio) radio.checked = true;
+  }
+  renderPaths();
+  updateDisabledState();
+  renderRangeFilenameMode();
+  renderVideoImageFilenameModes();
+  renderTimeTokenFormat();
+  renderCustomTimeFormats();
+  renderBestAvailableQualityCap();
+  renderFilenameMode();
+  renderCustomSchemes();
+  renderIntegratedCategories();
+  hideError();
+  flashSaved();
 }
 
 function flashSaved() {
@@ -603,6 +766,8 @@ checkHostUpdatesBtn.addEventListener("click", () => {
 });
 
 if (addCustomSchemeBtn) addCustomSchemeBtn.addEventListener("click", addCustomScheme);
+if (addCustomTimeFormatBtn) addCustomTimeFormatBtn.addEventListener("click", addCustomTimeFormat);
+if (resetOptionsBtn) resetOptionsBtn.addEventListener("click", resetOptionsToDefaults);
 
 connect();
 load();

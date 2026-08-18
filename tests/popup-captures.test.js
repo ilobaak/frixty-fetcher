@@ -100,10 +100,9 @@ describe("popup naming modes", () => {
   it("uses range filename tokens without appending an extra suffix", () => {
     const body = functionBody("startRangeDownload");
     expect(body).toContain("saveSettings.rangeFilenameMode");
-    expect(body).toContain(
-      "startTime: filenameTimeToken(start.seconds, saveSettings.timeTokenFormat)",
-    );
-    expect(body).toContain("endTime: filenameTimeToken(end.seconds, saveSettings.timeTokenFormat)");
+    expect(body).toContain("startTime: filenameTimeToken(");
+    expect(body).toContain("endTime: filenameTimeToken(");
+    expect(body).toContain("saveSettings.customTimeTokenFormats");
     expect(body).toContain("startHours: startParts.hours");
     expect(body).toContain("endHours: endParts.hours");
     expect(body).not.toContain("rangeSuffix");
@@ -114,7 +113,7 @@ describe("popup naming modes", () => {
     const body = functionBody("videoToolBaseName");
     expect(body).toContain("saveSettings.thumbnailFilenameMode");
     expect(body).toContain("saveSettings.frameFilenameMode");
-    expect(body).toContain("frameTime: filenameTimeToken(seconds, saveSettings.timeTokenFormat)");
+    expect(body).toContain("saveSettings.customTimeTokenFormats");
     expect(body).toContain("hours: parts.hours");
     expect(functionBody("startThumbnailDownload")).toContain('videoToolBaseName("thumbnail")');
     expect(functionBody("startFrameDownload")).toContain('videoToolBaseName("frame", seconds)');
@@ -157,13 +156,20 @@ describe("options filename controls", () => {
     );
     expect(optionsSource).toContain('const frameFilenameModeEl = el("frame-filename-mode")');
     expect(optionsSource).toContain('const timeTokenFormatEl = el("time-token-format")');
+    expect(optionsSource).toContain('const customTimeFormatsEl = el("custom-time-formats")');
     expect(optionsSource).toContain('const bestQualityCapEl = el("best-quality-cap")');
     expect(optionsSource).toContain("function renderFilenameMode()");
     expect(optionsSource).toContain("function renderTimeTokenFormat()");
+    expect(optionsSource).not.toContain(' - example "');
+    expect(optionsSource).toContain("function addCustomTimeFormat()");
     expect(optionsSource).toContain("function renderBestAvailableQualityCap()");
     expect(optionsSource).toContain("bestAvailableMaxHeight");
     expect(optionsSource).toContain('new Option("Downloads media", "download")');
     expect(optionsSource).toContain('new Option("Fetches to extension", "fetch")');
     expect(optionsSource).toContain("integrated-button-image");
+    expect(optionsSource).toContain("function resetOptionsToDefaults()");
+    expect(optionsSource).toContain("confirm(");
+    expect(optionsSource).toContain("filenameSchemeNameTaken");
+    expect(optionsSource).toContain('remove.className = "danger"');
   });
 });

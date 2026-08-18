@@ -67,6 +67,7 @@ import {
   framePreviewKey,
   frameTimestampSelection,
   rangePreviewTimestamp,
+  normalizeCustomTimeTokenFormats,
   resolveFrameTimestampPrefill,
   thumbnailPreviewState,
   validateTimestamp,
@@ -268,6 +269,7 @@ const saveSettings = {
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
+  customTimeTokenFormats: [],
   bestAvailableMaxHeight: DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
@@ -334,6 +336,7 @@ async function init() {
   saveSettings.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
   saveSettings.frameFilenameMode = resolveFrameFilenameMode(s);
   saveSettings.timeTokenFormat = s.timeTokenFormat || DEFAULT_TIME_TOKEN_FORMAT;
+  saveSettings.customTimeTokenFormats = normalizeCustomTimeTokenFormats(s.customTimeTokenFormats);
   saveSettings.bestAvailableMaxHeight = resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight);
   saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
@@ -2083,7 +2086,11 @@ function videoToolBaseName(kind, seconds = 0) {
   const base = filenameBaseFromMode(mode, {
     title: currentTitle,
     handle,
-    frameTime: filenameTimeToken(seconds, saveSettings.timeTokenFormat),
+    frameTime: filenameTimeToken(
+      seconds,
+      saveSettings.timeTokenFormat,
+      saveSettings.customTimeTokenFormats,
+    ),
     frameNumber: "",
     hours: parts.hours,
     minutes: parts.minutes,
@@ -2177,8 +2184,16 @@ function startRangeDownload() {
   const base = customName || filenameBaseFromMode(fnMode, {
     title: currentTitle,
     handle,
-    startTime: filenameTimeToken(start.seconds, saveSettings.timeTokenFormat),
-    endTime: filenameTimeToken(end.seconds, saveSettings.timeTokenFormat),
+    startTime: filenameTimeToken(
+      start.seconds,
+      saveSettings.timeTokenFormat,
+      saveSettings.customTimeTokenFormats,
+    ),
+    endTime: filenameTimeToken(
+      end.seconds,
+      saveSettings.timeTokenFormat,
+      saveSettings.customTimeTokenFormats,
+    ),
     hours: startParts.hours,
     minutes: startParts.minutes,
     seconds: startParts.seconds,

@@ -174,8 +174,8 @@ export const BUILTIN_FILENAME_SCHEMES = [
   },
   {
     value: "uploader-title-range-source",
-    label: "[@Poster] -- [Title] -- S[Start Time] -- E[End Time] -- [Source]",
-    template: "[@Poster] -- [Title] -- S[Start Time] -- E[End Time] -- [Source]",
+    label: "[@Poster] -- [Title] -- S([Start Time]) -- E([End Time]) -- [Source]",
+    template: "[@Poster] -- [Title] -- S([Start Time]) -- E([End Time]) -- [Source]",
     rangeOnly: true,
   },
   {
@@ -186,8 +186,8 @@ export const BUILTIN_FILENAME_SCHEMES = [
   },
   {
     value: "uploader-title-frame-source",
-    label: "[@Poster] -- [Title] -- FRAME[Frame Time] -- [Source]",
-    template: "[@Poster] -- [Title] -- FRAME[Frame Time] -- [Source]",
+    label: "[@Poster] -- [Title] -- FRAME([Frame Time]) -- [Source]",
+    template: "[@Poster] -- [Title] -- FRAME([Frame Time]) -- [Source]",
     videoImageOnly: true,
   },
   {
@@ -325,6 +325,30 @@ export function applyFilenameTemplate(template, tokens = {}) {
     "[frame time]": tokens.frameTime || "",
     "[Frame Number]": tokens.frameNumber || "",
     "[frame number]": tokens.frameNumber || "",
+    "[Hours]": tokens.hours || "",
+    "[hours]": tokens.hours || "",
+    "[Minutes]": tokens.minutes || "",
+    "[minutes]": tokens.minutes || "",
+    "[Seconds]": tokens.seconds || "",
+    "[seconds]": tokens.seconds || "",
+    "[Milliseconds]": tokens.milliseconds || "",
+    "[milliseconds]": tokens.milliseconds || "",
+    "[Start Hours]": tokens.startHours || "",
+    "[start hours]": tokens.startHours || "",
+    "[Start Minutes]": tokens.startMinutes || "",
+    "[start minutes]": tokens.startMinutes || "",
+    "[Start Seconds]": tokens.startSeconds || "",
+    "[start seconds]": tokens.startSeconds || "",
+    "[Start Milliseconds]": tokens.startMilliseconds || "",
+    "[start milliseconds]": tokens.startMilliseconds || "",
+    "[End Hours]": tokens.endHours || "",
+    "[end hours]": tokens.endHours || "",
+    "[End Minutes]": tokens.endMinutes || "",
+    "[end minutes]": tokens.endMinutes || "",
+    "[End Seconds]": tokens.endSeconds || "",
+    "[end seconds]": tokens.endSeconds || "",
+    "[End Milliseconds]": tokens.endMilliseconds || "",
+    "[end milliseconds]": tokens.endMilliseconds || "",
   };
   for (const [token, value] of Object.entries(replacements)) {
     out = out.split(token).join(String(value || ""));

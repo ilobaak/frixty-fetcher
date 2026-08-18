@@ -61,15 +61,41 @@ export function frameTimestampFilenameSuffix(seconds) {
   return formatTimestamp(seconds).replace(/:/g, "-");
 }
 
-export function filenameTimeToken(seconds) {
+export const DEFAULT_TIME_TOKEN_FORMAT = "hh.mm.ss.mmm";
+
+export const TIME_TOKEN_FORMAT_OPTIONS = [
+  { value: "hh.mm.ss.mmm", label: "HH.MM.SS.milliseconds", example: "01.02.03.250" },
+  { value: "hh-mm-ss-mmm", label: "HH-MM-SS-milliseconds", example: "01-02-03-250" },
+  { value: "hh:mm:ss.mmm", label: "HH:MM:SS.milliseconds", example: "01:02:03.250" },
+  { value: 'hh:mm"ss', label: 'HH:MM"SS', example: '01:02"03' },
+  { value: "hh.mm.ss", label: "HH.MM.SS", example: "01.02.03" },
+];
+
+export function filenameTimeParts(seconds) {
   const n = Number(seconds);
-  if (!Number.isFinite(n) || n < 0) return "";
+  if (!Number.isFinite(n) || n < 0) return null;
   const whole = Math.floor(n);
   const ms = Math.floor((n - whole) * 1000);
   const h = Math.floor(whole / 3600);
   const m = Math.floor((whole % 3600) / 60);
   const s = whole % 60;
-  return `${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")}.${String(s).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+  return {
+    hours: String(h).padStart(2, "0"),
+    minutes: String(m).padStart(2, "0"),
+    seconds: String(s).padStart(2, "0"),
+    milliseconds: String(ms).padStart(3, "0"),
+  };
+}
+
+export function filenameTimeToken(seconds, format = DEFAULT_TIME_TOKEN_FORMAT) {
+  const parts = filenameTimeParts(seconds);
+  if (!parts) return "";
+  const { hours, minutes, seconds: secs, milliseconds } = parts;
+  if (format === "hh-mm-ss-mmm") return `${hours}-${minutes}-${secs}-${milliseconds}`;
+  if (format === "hh:mm:ss.mmm") return `${hours}:${minutes}:${secs}.${milliseconds}`;
+  if (format === 'hh:mm"ss') return `${hours}:${minutes}"${secs}`;
+  if (format === "hh.mm.ss") return `${hours}.${minutes}.${secs}`;
+  return `${hours}.${minutes}.${secs}.${milliseconds}`;
 }
 
 export function framePreviewKey(url, seconds) {

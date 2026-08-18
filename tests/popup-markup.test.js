@@ -96,6 +96,10 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="range-filename-mode"');
     expect(optionsHtml).toContain('id="thumbnail-filename-mode"');
     expect(optionsHtml).toContain('id="frame-filename-mode"');
+    expect(optionsHtml).toContain('id="time-token-format"');
+    expect(optionsHtml).toContain("Thumbnail Download");
+    expect(optionsHtml).toContain("Frame Download");
+    expect(optionsHtml).toContain("Default Scheme");
     expect(optionsHtml).toContain('id="custom-schemes"');
     expect(optionsHtml).toContain('id="custom-scheme-template"');
     expect(optionsHtml).not.toContain("<code>[Start]</code>");
@@ -104,8 +108,15 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain("[End Time]");
     expect(optionsHtml).toContain("[Frame Time]");
     expect(optionsHtml).toContain("[Frame Number]");
+    expect(optionsHtml).toContain("[Hours]");
+    expect(optionsHtml).toContain("[Minutes]");
+    expect(optionsHtml).toContain("[Start Hours]");
+    expect(optionsHtml).toContain("[End Minutes]");
+    expect(optionsHtml).toContain("FRAME([Frame Time])");
+    expect(optionsHtml).toContain("S([Start Time])");
     expect(optionsHtml).toContain("Media or post title");
     expect(optionsHtml).toContain("Site token");
-    expect(optionsHtml).toContain("Video range start in");
+    expect(optionsHtml).toContain("Video range start using the selected time format");
+    expect(optionsHtml).toContain('"Midnight Train Review"');
   });
 });

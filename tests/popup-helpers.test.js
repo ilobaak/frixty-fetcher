@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_TIME_TOKEN_FORMAT,
+  TIME_TOKEN_FORMAT_OPTIONS,
+  filenameTimeParts,
   filenameTimeToken,
   framePreviewKey,
   frameTimestampFilenameSuffix,
@@ -65,6 +68,25 @@ describe("timestamp helpers", () => {
     expect(filenameTimeToken(0)).toBe("00.00.00.000");
     expect(filenameTimeToken(83.5)).toBe("00.01.23.500");
     expect(filenameTimeToken(3723.25)).toBe("01.02.03.250");
+    expect(DEFAULT_TIME_TOKEN_FORMAT).toBe("hh.mm.ss.mmm");
+  });
+
+  it("formats filename time tokens with the selected format", () => {
+    expect(TIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain('hh:mm"ss');
+    expect(filenameTimeToken(3723.25, "hh-mm-ss-mmm")).toBe("01-02-03-250");
+    expect(filenameTimeToken(3723.25, "hh:mm:ss.mmm")).toBe("01:02:03.250");
+    expect(filenameTimeToken(3723.25, 'hh:mm"ss')).toBe('01:02"03');
+    expect(filenameTimeToken(3723.25, "hh.mm.ss")).toBe("01.02.03");
+  });
+
+  it("returns filename time segments for custom tokens", () => {
+    expect(filenameTimeParts(3723.25)).toEqual({
+      hours: "01",
+      minutes: "02",
+      seconds: "03",
+      milliseconds: "250",
+    });
+    expect(filenameTimeParts(-1)).toBeNull();
   });
 
   it("keys frame previews by url and timestamp", () => {

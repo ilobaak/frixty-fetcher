@@ -4,6 +4,11 @@
 // page.
 
 import {
+  DEFAULT_TIME_TOKEN_FORMAT,
+  TIME_TOKEN_FORMAT_OPTIONS,
+} from "./popup-helpers.js";
+
+import {
   DEFAULT_FRAME_FILENAME_SCHEME,
   DEFAULT_FILENAME_SCHEME,
   DEFAULT_MULTIPLE_FILENAME_SCHEME,
@@ -42,6 +47,7 @@ const multipleFilenameModeEl = el("multiple-filename-mode");
 const rangeFilenameModeEl = el("range-filename-mode");
 const thumbnailFilenameModeEl = el("thumbnail-filename-mode");
 const frameFilenameModeEl = el("frame-filename-mode");
+const timeTokenFormatEl = el("time-token-format");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
 const customSchemeTemplateEl = el("custom-scheme-template");
@@ -68,6 +74,7 @@ let current = {
   rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
+  timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
   customFilenameSchemes: [],
   integratedButtonSettings: {},
   twitterCookiesMode: "always",
@@ -210,6 +217,7 @@ async function load() {
   current.rangeFilenameMode = resolveRangeFilenameMode(s);
   current.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
   current.frameFilenameMode = resolveFrameFilenameMode(s);
+  current.timeTokenFormat = resolveTimeTokenFormat(s.timeTokenFormat);
   current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   current.integratedButtonSettings = migrateIntegratedButtonSettings(s.integratedButtonSettings || {});
   current.twitterCookiesMode = s.twitterCookiesMode ?? "always";
@@ -222,6 +230,7 @@ async function load() {
   if (modeRadio) modeRadio.checked = true;
   renderRangeFilenameMode();
   renderVideoImageFilenameModes();
+  renderTimeTokenFormat();
   renderFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
@@ -278,6 +287,7 @@ async function save() {
   current.rangeFilenameMode = rangeFilenameModeEl?.value || DEFAULT_RANGE_FILENAME_SCHEME;
   current.thumbnailFilenameMode = thumbnailFilenameModeEl?.value || DEFAULT_THUMBNAIL_FILENAME_SCHEME;
   current.frameFilenameMode = frameFilenameModeEl?.value || DEFAULT_FRAME_FILENAME_SCHEME;
+  current.timeTokenFormat = resolveTimeTokenFormat(timeTokenFormatEl?.value);
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
   current.youtubeCookiesMode = document.querySelector('input[name="youtube-cookies-mode"]:checked')?.value ?? "always";
@@ -298,6 +308,7 @@ async function save() {
       rangeFilenameMode: current.rangeFilenameMode,
       thumbnailFilenameMode: current.thumbnailFilenameMode,
       frameFilenameMode: current.frameFilenameMode,
+      timeTokenFormat: current.timeTokenFormat,
       customFilenameSchemes: current.customFilenameSchemes,
       integratedButtonSettings: current.integratedButtonSettings,
       twitterCookiesMode: current.twitterCookiesMode,
@@ -357,6 +368,23 @@ function renderVideoImageFilenameModes() {
     DEFAULT_FRAME_FILENAME_SCHEME,
     { includeGalleryOnly: false, includeOriginal: false, includeVideoImageOnly: true },
   );
+}
+
+function resolveTimeTokenFormat(value) {
+  return TIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.value === value)
+    ? value
+    : DEFAULT_TIME_TOKEN_FORMAT;
+}
+
+function renderTimeTokenFormat() {
+  if (!timeTokenFormatEl) return;
+  const previous = resolveTimeTokenFormat(timeTokenFormatEl.value || current.timeTokenFormat);
+  timeTokenFormatEl.innerHTML = "";
+  for (const opt of TIME_TOKEN_FORMAT_OPTIONS) {
+    timeTokenFormatEl.add(new Option(`${opt.label} - example "${opt.example}"`, opt.value));
+  }
+  timeTokenFormatEl.value = previous;
+  current.timeTokenFormat = timeTokenFormatEl.value;
 }
 
 function migrateIntegratedButtonSettings(raw) {

@@ -235,7 +235,7 @@ describe("filename source tokens", () => {
   it("applies title, poster, source, index, range time, and frame tokens", () => {
     expect(
       applyFilenameTemplate(
-        "[@Poster] -- [Title] -- [Source] - [Index] -- S[Start Time] -- E[End Time] -- FRAME[Frame Time] -- [Frame Number]",
+        "[@Poster] -- [Title] -- [Source] - [Index] -- S([Start Time]) -- E([End Time]) -- FRAME([Frame Time]) -- [Frame Number]",
         {
           title: "Post",
           poster: "@user",
@@ -248,8 +248,29 @@ describe("filename source tokens", () => {
         },
       ),
     ).toBe(
-      "@user -- Post -- x.com - 02 -- S00.00.10.000 -- E00.00.30.000 -- FRAME00.00.15.500 -- 465",
+      "@user -- Post -- x.com - 02 -- S(00.00.10.000) -- E(00.00.30.000) -- FRAME(00.00.15.500) -- 465",
     );
+  });
+
+  it("applies time-segment tokens and falls back to empty values", () => {
+    expect(
+      applyFilenameTemplate(
+        "[Title] -- H[Hours] M[Minutes] S[Seconds] MS[Milliseconds] -- S([Start Hours].[Start Minutes].[Start Seconds]) -- E([End Hours].[End Minutes].[End Seconds])",
+        {
+          title: "Post",
+          hours: "00",
+          minutes: "01",
+          seconds: "23",
+          milliseconds: "500",
+          startHours: "00",
+          startMinutes: "00",
+          startSeconds: "10",
+          endHours: "00",
+          endMinutes: "00",
+          endSeconds: "30",
+        },
+      ),
+    ).toBe("Post -- H00 M01 S23 MS500 -- S(00.00.10) -- E(00.00.30)");
   });
 
   it("drops unresolved bracket tokens instead of leaving them in filenames", () => {

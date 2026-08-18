@@ -99,8 +99,12 @@ describe("popup naming modes", () => {
   it("uses range filename tokens without appending an extra suffix", () => {
     const body = functionBody("startRangeDownload");
     expect(body).toContain("saveSettings.rangeFilenameMode");
-    expect(body).toContain("startTime: filenameTimeToken(start.seconds)");
-    expect(body).toContain("endTime: filenameTimeToken(end.seconds)");
+    expect(body).toContain(
+      "startTime: filenameTimeToken(start.seconds, saveSettings.timeTokenFormat)",
+    );
+    expect(body).toContain("endTime: filenameTimeToken(end.seconds, saveSettings.timeTokenFormat)");
+    expect(body).toContain("startHours: startParts.hours");
+    expect(body).toContain("endHours: endParts.hours");
     expect(body).not.toContain("rangeSuffix");
     expect(body).not.toContain("suffixAlreadyPresent");
   });
@@ -109,7 +113,8 @@ describe("popup naming modes", () => {
     const body = functionBody("videoToolBaseName");
     expect(body).toContain("saveSettings.thumbnailFilenameMode");
     expect(body).toContain("saveSettings.frameFilenameMode");
-    expect(body).toContain("frameTime: filenameTimeToken(seconds)");
+    expect(body).toContain("frameTime: filenameTimeToken(seconds, saveSettings.timeTokenFormat)");
+    expect(body).toContain("hours: parts.hours");
     expect(functionBody("startThumbnailDownload")).toContain('videoToolBaseName("thumbnail")');
     expect(functionBody("startFrameDownload")).toContain('videoToolBaseName("frame", seconds)');
   });
@@ -132,7 +137,9 @@ describe("options filename controls", () => {
       'const thumbnailFilenameModeEl = el("thumbnail-filename-mode")',
     );
     expect(optionsSource).toContain('const frameFilenameModeEl = el("frame-filename-mode")');
+    expect(optionsSource).toContain('const timeTokenFormatEl = el("time-token-format")');
     expect(optionsSource).toContain("function renderFilenameMode()");
+    expect(optionsSource).toContain("function renderTimeTokenFormat()");
     expect(optionsSource).toContain('new Option("Downloads media", "download")');
     expect(optionsSource).toContain('new Option("Fetches to extension", "fetch")');
     expect(optionsSource).toContain("integrated-button-image");

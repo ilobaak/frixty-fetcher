@@ -58,6 +58,8 @@ import {
 } from "./shared.js";
 import { friendlyError } from "./popup-errors.js";
 import {
+  DEFAULT_TIME_TOKEN_FORMAT,
+  filenameTimeParts,
   formatTimestamp,
   filenameTimeToken,
   framePreviewKey,
@@ -263,6 +265,7 @@ const saveSettings = {
   rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
+  timeTokenFormat: DEFAULT_TIME_TOKEN_FORMAT,
   customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
   // video, single image, multi-item gallery). Replaces the older
@@ -327,6 +330,7 @@ async function init() {
   saveSettings.rangeFilenameMode = resolveRangeFilenameMode(s);
   saveSettings.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
   saveSettings.frameFilenameMode = resolveFrameFilenameMode(s);
+  saveSettings.timeTokenFormat = s.timeTokenFormat || DEFAULT_TIME_TOKEN_FORMAT;
   saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
   // flag inverts: "confirm-each = true" meant "prompt per file" which
@@ -1924,6 +1928,18 @@ function filenameBaseFromMode(
     endTime = "",
     frameTime = "",
     frameNumber = "",
+    hours = "",
+    minutes = "",
+    seconds = "",
+    milliseconds = "",
+    startHours = "",
+    startMinutes = "",
+    startSeconds = "",
+    startMilliseconds = "",
+    endHours = "",
+    endMinutes = "",
+    endSeconds = "",
+    endMilliseconds = "",
   } = {},
 ) {
   const poster = normalizeHandle(handle);
@@ -1939,6 +1955,18 @@ function filenameBaseFromMode(
       endTime,
       frameTime,
       frameNumber,
+      hours,
+      minutes,
+      seconds,
+      milliseconds,
+      startHours,
+      startMinutes,
+      startSeconds,
+      startMilliseconds,
+      endHours,
+      endMinutes,
+      endSeconds,
+      endMilliseconds,
     });
   }
   if (mode === "title-uploader" && poster) return `${cleanTitle} -- ${poster}`.trim();
@@ -2041,11 +2069,16 @@ function videoToolBaseName(kind, seconds = 0) {
     kind === "thumbnail"
       ? saveSettings.thumbnailFilenameMode
       : saveSettings.frameFilenameMode;
+  const parts = filenameTimeParts(seconds) || {};
   const base = filenameBaseFromMode(mode, {
     title: currentTitle,
     handle,
-    frameTime: filenameTimeToken(seconds),
+    frameTime: filenameTimeToken(seconds, saveSettings.timeTokenFormat),
     frameNumber: "",
+    hours: parts.hours,
+    minutes: parts.minutes,
+    seconds: parts.seconds,
+    milliseconds: parts.milliseconds,
   });
   return buildSafeFilename(base, kind === "thumbnail" ? "jpg" : "png");
 }
@@ -2129,11 +2162,25 @@ function startRangeDownload() {
   const fnMode = saveSettings.rangeFilenameMode || DEFAULT_RANGE_FILENAME_SCHEME;
   const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
   const handle = pickHandleText(currentUploaderId, currentUploader);
+  const startParts = filenameTimeParts(start.seconds) || {};
+  const endParts = filenameTimeParts(end.seconds) || {};
   const base = customName || filenameBaseFromMode(fnMode, {
     title: currentTitle,
     handle,
-    startTime: filenameTimeToken(start.seconds),
-    endTime: filenameTimeToken(end.seconds),
+    startTime: filenameTimeToken(start.seconds, saveSettings.timeTokenFormat),
+    endTime: filenameTimeToken(end.seconds, saveSettings.timeTokenFormat),
+    hours: startParts.hours,
+    minutes: startParts.minutes,
+    seconds: startParts.seconds,
+    milliseconds: startParts.milliseconds,
+    startHours: startParts.hours,
+    startMinutes: startParts.minutes,
+    startSeconds: startParts.seconds,
+    startMilliseconds: startParts.milliseconds,
+    endHours: endParts.hours,
+    endMinutes: endParts.minutes,
+    endSeconds: endParts.seconds,
+    endMilliseconds: endParts.milliseconds,
   });
   const finalBase = base;
   const safeBase = buildSafeFilename(finalBase, "__EXT__").replace(/\.__EXT__$/, "");

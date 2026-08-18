@@ -187,6 +187,7 @@
       <input id="custom-time-format-pattern" type="text" placeholder="HH.MM.SS.milliseconds" />
       <button id="add-custom-time-format" type="button">Add format</button>
     </div>
+    <p id="custom-time-format-error" class="section-error" hidden></p>
     <p class="muted" style="margin-top: 4px">
       Custom time formats can use <code>HH</code>, <code>MM</code>, <code>SS</code>, and
       <code>milliseconds</code>.
@@ -203,6 +204,7 @@
       <input id="custom-datetime-format-pattern" type="text" placeholder="YYYY.MM.DD-HH.mm.SS" />
       <button id="add-custom-datetime-format" type="button">Add format</button>
     </div>
+    <p id="custom-datetime-format-error" class="section-error" hidden></p>
     <p class="muted" style="margin-top: 4px">
       Custom datetime formats can use <code>YYYY</code>, <code>YY</code>, <code>MM</code>,
       <code>DD</code>, <code>HH</code>, <code>mm</code>, <code>SS</code>, and
@@ -220,6 +222,7 @@
       />
       <button id="add-custom-scheme" type="button">Add scheme</button>
     </div>
+    <p id="custom-scheme-error" class="section-error" hidden></p>
     <div class="token-list">
       <div>
         <code>[Title]</code
@@ -297,7 +300,7 @@
     </div>
 
     <div class="reset-options-row">
-      <button id="reset-options" type="button" class="danger">Reset options to default</button>
+      <button id="reset-options" type="button" class="danger">Reset All Options</button>
     </div>
 
     <script type="module" src="options.js"></script>

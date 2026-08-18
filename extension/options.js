@@ -65,15 +65,18 @@ const customTimeFormatsEl = el("custom-time-formats");
 const customTimeFormatNameEl = el("custom-time-format-name");
 const customTimeFormatPatternEl = el("custom-time-format-pattern");
 const addCustomTimeFormatBtn = el("add-custom-time-format");
+const customTimeFormatErrorEl = el("custom-time-format-error");
 const datetimeTokenFormatEl = el("datetime-token-format");
 const customDatetimeFormatsEl = el("custom-datetime-formats");
 const customDatetimeFormatNameEl = el("custom-datetime-format-name");
 const customDatetimeFormatPatternEl = el("custom-datetime-format-pattern");
 const addCustomDatetimeFormatBtn = el("add-custom-datetime-format");
+const customDatetimeFormatErrorEl = el("custom-datetime-format-error");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
 const customSchemeTemplateEl = el("custom-scheme-template");
 const addCustomSchemeBtn = el("add-custom-scheme");
+const customSchemeErrorEl = el("custom-scheme-error");
 const resetOptionsBtn = el("reset-options");
 
 const INTEGRATED_CATEGORIES = [
@@ -111,6 +114,7 @@ let current = {
   tiktokCookiesMode: "always",
 };
 let port;
+const sectionErrorTimers = new WeakMap();
 
 function defaultIntegratedButtonSettings() {
   return migrateIntegratedButtonSettings({});
@@ -472,6 +476,32 @@ function renderTimeTokenFormat() {
   current.timeTokenFormat = timeTokenFormatEl.value;
 }
 
+function showSectionError(target, message, { alertUser = false } = {}) {
+  if (!target) return;
+  target.hidden = false;
+  target.textContent = message;
+  const existing = sectionErrorTimers.get(target);
+  if (existing) clearTimeout(existing);
+  sectionErrorTimers.set(
+    target,
+    setTimeout(() => {
+      target.hidden = true;
+      target.textContent = "";
+      sectionErrorTimers.delete(target);
+    }, 4500),
+  );
+  if (alertUser) alert(message);
+}
+
+function hideSectionError(target) {
+  if (!target) return;
+  const existing = sectionErrorTimers.get(target);
+  if (existing) clearTimeout(existing);
+  sectionErrorTimers.delete(target);
+  target.hidden = true;
+  target.textContent = "";
+}
+
 function renderCustomTimeFormats() {
   if (!customTimeFormatsEl) return;
   customTimeFormatsEl.innerHTML = "";
@@ -515,11 +545,13 @@ function addCustomTimeFormat() {
   const name = String(customTimeFormatNameEl?.value || "").trim();
   const pattern = String(customTimeFormatPatternEl?.value || "").trim();
   if (!name || !pattern) {
-    showError("Enter a name and time format.");
+    showSectionError(customTimeFormatErrorEl, "Enter a name and time format.");
     return;
   }
   if (customTimeFormatNameTaken(name)) {
-    showError("That time format name already exists.");
+    showSectionError(customTimeFormatErrorEl, "Cannot save: that name is already taken.", {
+      alertUser: true,
+    });
     return;
   }
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -529,6 +561,7 @@ function addCustomTimeFormat() {
   ]);
   customTimeFormatNameEl.value = "";
   customTimeFormatPatternEl.value = "";
+  hideSectionError(customTimeFormatErrorEl);
   hideError();
   renderTimeTokenFormat();
   renderCustomTimeFormats();
@@ -606,11 +639,13 @@ function addCustomDatetimeFormat() {
   const name = String(customDatetimeFormatNameEl?.value || "").trim();
   const pattern = String(customDatetimeFormatPatternEl?.value || "").trim();
   if (!name || !pattern) {
-    showError("Enter a name and datetime format.");
+    showSectionError(customDatetimeFormatErrorEl, "Enter a name and datetime format.");
     return;
   }
   if (customDatetimeFormatNameTaken(name)) {
-    showError("That datetime format name already exists.");
+    showSectionError(customDatetimeFormatErrorEl, "Cannot save: that name is already taken.", {
+      alertUser: true,
+    });
     return;
   }
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -620,6 +655,7 @@ function addCustomDatetimeFormat() {
   ]);
   customDatetimeFormatNameEl.value = "";
   customDatetimeFormatPatternEl.value = "";
+  hideSectionError(customDatetimeFormatErrorEl);
   hideError();
   renderDatetimeTokenFormat();
   renderCustomDatetimeFormats();
@@ -780,11 +816,13 @@ function addCustomScheme() {
   const name = String(customSchemeNameEl?.value || "").trim();
   const template = String(customSchemeTemplateEl?.value || "").trim();
   if (!name || !template) {
-    showError("Enter a name and filename scheme.");
+    showSectionError(customSchemeErrorEl, "Enter a name and filename scheme.");
     return;
   }
   if (filenameSchemeNameTaken(name)) {
-    showError("That filename scheme name already exists.");
+    showSectionError(customSchemeErrorEl, "Cannot save: that name is already taken.", {
+      alertUser: true,
+    });
     return;
   }
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -794,6 +832,7 @@ function addCustomScheme() {
   ]);
   customSchemeNameEl.value = "";
   customSchemeTemplateEl.value = "";
+  hideSectionError(customSchemeErrorEl);
   hideError();
   renderRangeFilenameMode();
   renderVideoImageFilenameModes();
@@ -803,9 +842,7 @@ function addCustomScheme() {
 }
 
 async function resetOptionsToDefaults() {
-  const ok = confirm(
-    "Reset all options to their defaults? This cannot be undone and resets every option back to its default value.",
-  );
+  const ok = confirm("Reset all options to their defaults? This cannot be undone.");
   if (!ok) return;
   const defaults = defaultOptionsSettings();
   await chrome.storage.local.set({ settings: defaults });
@@ -834,6 +871,9 @@ async function resetOptionsToDefaults() {
   renderFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
+  hideSectionError(customTimeFormatErrorEl);
+  hideSectionError(customDatetimeFormatErrorEl);
+  hideSectionError(customSchemeErrorEl);
   hideError();
   flashSaved();
 }

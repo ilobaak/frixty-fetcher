@@ -182,6 +182,11 @@ button:disabled {
 .custom-time-format-row {
   justify-content: space-between;
 }
+.section-error {
+  color: #b3261e;
+  font-size: 13px;
+  margin: 4px 0 8px;
+}
 .reset-options-row {
   display: flex;
   justify-content: flex-end;

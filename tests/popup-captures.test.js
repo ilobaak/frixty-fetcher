@@ -169,6 +169,9 @@ describe("options filename controls", () => {
     expect(optionsSource).not.toContain(' - example "');
     expect(optionsSource).toContain("function addCustomTimeFormat()");
     expect(optionsSource).toContain("function addCustomDatetimeFormat()");
+    expect(optionsSource).toContain("function showSectionError(");
+    expect(optionsSource).toContain("Cannot save: that name is already taken.");
+    expect(optionsSource).toContain("alert(message)");
     expect(optionsSource).toContain("function renderBestAvailableQualityCap()");
     expect(optionsSource).toContain("bestAvailableMaxHeight");
     expect(optionsSource).toContain('new Option("Downloads media", "download")');
@@ -176,6 +179,7 @@ describe("options filename controls", () => {
     expect(optionsSource).toContain("integrated-button-image");
     expect(optionsSource).toContain("function resetOptionsToDefaults()");
     expect(optionsSource).toContain("confirm(");
+    expect(optionsSource).toContain("This cannot be undone.");
     expect(optionsSource).toContain("filenameSchemeNameTaken");
     expect(optionsSource).toContain('remove.className = "danger"');
   });

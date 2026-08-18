@@ -82,7 +82,7 @@ button:disabled {
 .card-control {
   margin: 8px 0 4px;
   display: grid;
-  grid-template-columns: 130px minmax(0, 1fr);
+  grid-template-columns: 210px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }

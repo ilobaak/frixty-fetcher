@@ -61,6 +61,17 @@ export function frameTimestampFilenameSuffix(seconds) {
   return formatTimestamp(seconds).replace(/:/g, "-");
 }
 
+export function filenameTimeToken(seconds) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n < 0) return "";
+  const whole = Math.floor(n);
+  const ms = Math.floor((n - whole) * 1000);
+  const h = Math.floor(whole / 3600);
+  const m = Math.floor((whole % 3600) / 60);
+  const s = whole % 60;
+  return `${String(h).padStart(2, "0")}.${String(m).padStart(2, "0")}.${String(s).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+}
+
 export function framePreviewKey(url, seconds) {
   const n = Number(seconds);
   const safeSeconds = Number.isFinite(n) && n > 0 ? n : 0;

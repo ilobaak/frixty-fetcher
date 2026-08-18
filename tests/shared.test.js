@@ -12,13 +12,21 @@ import {
   extensionFromUrl,
   sanitizeFilenameSegment,
   resolveFilenameMode,
+  resolveMultipleFilenameMode,
   resolveRangeFilenameMode,
+  resolveThumbnailFilenameMode,
+  resolveFrameFilenameMode,
   migrateFilenameSettings,
   buildSafeFilename,
   sanitizeLooseFilename,
   normalizeHandle,
   pickHandleText,
   DEFAULT_FILENAME_SCHEME,
+  DEFAULT_MULTIPLE_FILENAME_SCHEME,
+  DEFAULT_RANGE_FILENAME_SCHEME,
+  DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+  DEFAULT_FRAME_FILENAME_SCHEME,
+  filenameSchemeOptions,
   applyFilenameTemplate,
   sourceTokenFromUrl,
   WIN_RESERVED,
@@ -174,8 +182,42 @@ describe("resolveRangeFilenameMode", () => {
     );
   });
 
-  it("falls back to the shared filename mode", () => {
-    expect(resolveRangeFilenameMode({ filenameMode: "title" })).toBe("title");
+  it("uses the range default instead of the shared filename mode", () => {
+    expect(resolveRangeFilenameMode({ filenameMode: "title" })).toBe(DEFAULT_RANGE_FILENAME_SCHEME);
+  });
+});
+
+describe("filename mode defaults", () => {
+  it("resolves separate default modes by download type", () => {
+    expect(resolveFilenameMode({})).toBe(DEFAULT_FILENAME_SCHEME);
+    expect(resolveMultipleFilenameMode({})).toBe(DEFAULT_MULTIPLE_FILENAME_SCHEME);
+    expect(resolveThumbnailFilenameMode({})).toBe(DEFAULT_THUMBNAIL_FILENAME_SCHEME);
+    expect(resolveFrameFilenameMode({})).toBe(DEFAULT_FRAME_FILENAME_SCHEME);
+  });
+
+  it("scopes range and video-image presets to their own dropdowns", () => {
+    const normal = filenameSchemeOptions([], {
+      includeGalleryOnly: false,
+      includeOriginal: false,
+    }).map((o) => o.value);
+    expect(normal).not.toContain(DEFAULT_RANGE_FILENAME_SCHEME);
+    expect(normal).not.toContain(DEFAULT_THUMBNAIL_FILENAME_SCHEME);
+    expect(normal).not.toContain(DEFAULT_FRAME_FILENAME_SCHEME);
+
+    const range = filenameSchemeOptions([], {
+      includeGalleryOnly: false,
+      includeOriginal: false,
+      includeRangeOnly: true,
+    }).map((o) => o.value);
+    expect(range).toContain(DEFAULT_RANGE_FILENAME_SCHEME);
+
+    const videoImage = filenameSchemeOptions([], {
+      includeGalleryOnly: false,
+      includeOriginal: false,
+      includeVideoImageOnly: true,
+    }).map((o) => o.value);
+    expect(videoImage).toContain(DEFAULT_THUMBNAIL_FILENAME_SCHEME);
+    expect(videoImage).toContain(DEFAULT_FRAME_FILENAME_SCHEME);
   });
 });
 
@@ -190,17 +232,32 @@ describe("filename source tokens", () => {
     expect(sourceTokenFromUrl("https://facebook.com/watch/1")).toBe("facebook");
   });
 
-  it("applies title, poster, source, index, and range tokens", () => {
+  it("applies title, poster, source, index, range time, and frame tokens", () => {
     expect(
-      applyFilenameTemplate("[Title] -- [@Poster] -- [Source] -- [Index] -- S[Start] -- E[End]", {
+      applyFilenameTemplate(
+        "[@Poster] -- [Title] -- [Source] - [Index] -- S[Start Time] -- E[End Time] -- FRAME[Frame Time] -- [Frame Number]",
+        {
+          title: "Post",
+          poster: "@user",
+          source: "x.com",
+          index: "02",
+          startTime: "00.00.10.000",
+          endTime: "00.00.30.000",
+          frameTime: "00.00.15.500",
+          frameNumber: "465",
+        },
+      ),
+    ).toBe(
+      "@user -- Post -- x.com - 02 -- S00.00.10.000 -- E00.00.30.000 -- FRAME00.00.15.500 -- 465",
+    );
+  });
+
+  it("drops unresolved bracket tokens instead of leaving them in filenames", () => {
+    expect(
+      applyFilenameTemplate("[Title] -- [Missing Token] -- FRAME[Frame Number]", {
         title: "Post",
-        poster: "@user",
-        source: "x.com",
-        index: "02",
-        start: "0-10",
-        end: "0-30",
       }),
-    ).toBe("Post -- @user -- x.com -- 02 -- S0-10 -- E0-30");
+    ).toBe("Post -- FRAME");
   });
 });
 
@@ -326,7 +383,11 @@ describe("migrateFilenameSettings", () => {
       galleryFilenameMode: "original",
       saveMode: "ask",
     });
-    expect(out).toEqual({ filenameMode: "original", saveMode: "ask" });
+    expect(out).toEqual({
+      filenameMode: "original",
+      multipleFilenameMode: "original",
+      saveMode: "ask",
+    });
     expect(out.imageFilenameMode).toBeUndefined();
     expect(out.galleryFilenameMode).toBeUndefined();
   });
@@ -334,12 +395,14 @@ describe("migrateFilenameSettings", () => {
   it("migrates the very-old useOriginalFilenames boolean (true → original)", () => {
     expect(migrateFilenameSettings({ useOriginalFilenames: true })).toEqual({
       filenameMode: "original",
+      multipleFilenameMode: "original",
     });
   });
 
   it("migrates the very-old useOriginalFilenames boolean (false → sequential)", () => {
     expect(migrateFilenameSettings({ useOriginalFilenames: false })).toEqual({
       filenameMode: "sequential",
+      multipleFilenameMode: "sequential",
     });
   });
 

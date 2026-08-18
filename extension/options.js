@@ -4,12 +4,19 @@
 // page.
 
 import {
+  DEFAULT_FRAME_FILENAME_SCHEME,
   DEFAULT_FILENAME_SCHEME,
+  DEFAULT_MULTIPLE_FILENAME_SCHEME,
+  DEFAULT_RANGE_FILENAME_SCHEME,
+  DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   filenameSchemeOptions,
   migrateFilenameSettings,
   normalizeCustomFilenameSchemes,
+  resolveFrameFilenameMode,
   resolveFilenameMode,
+  resolveMultipleFilenameMode,
   resolveRangeFilenameMode,
+  resolveThumbnailFilenameMode,
 } from "./shared.js";
 
 const DEFAULT_MODE = "ask";
@@ -31,7 +38,10 @@ const checkHostUpdatesBtn = el("check-host-updates");
 const hostUpdateResultEl = el("host-update-result");
 const integratedCategoriesEl = el("integrated-categories");
 const filenameModeEl = el("filename-mode");
+const multipleFilenameModeEl = el("multiple-filename-mode");
 const rangeFilenameModeEl = el("range-filename-mode");
+const thumbnailFilenameModeEl = el("thumbnail-filename-mode");
+const frameFilenameModeEl = el("frame-filename-mode");
 const customSchemesEl = el("custom-schemes");
 const customSchemeNameEl = el("custom-scheme-name");
 const customSchemeTemplateEl = el("custom-scheme-template");
@@ -54,7 +64,10 @@ let current = {
   // The image picker maps "sequential" to "uploader-title" since per-item
   // indexing is meaningless for a 1-of-1 download.
   filenameMode: DEFAULT_FILENAME_SCHEME,
-  rangeFilenameMode: DEFAULT_FILENAME_SCHEME,
+  multipleFilenameMode: DEFAULT_MULTIPLE_FILENAME_SCHEME,
+  rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
+  thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+  frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   customFilenameSchemes: [],
   integratedButtonSettings: {},
   twitterCookiesMode: "always",
@@ -193,7 +206,10 @@ async function load() {
   current.specificDestDir = s.specificDestDir ?? "";
   current.lastDir = s.lastDir ?? "";
   current.filenameMode = resolveFilenameMode(s);
+  current.multipleFilenameMode = resolveMultipleFilenameMode(s);
   current.rangeFilenameMode = resolveRangeFilenameMode(s);
+  current.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
+  current.frameFilenameMode = resolveFrameFilenameMode(s);
   current.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   current.integratedButtonSettings = migrateIntegratedButtonSettings(s.integratedButtonSettings || {});
   current.twitterCookiesMode = s.twitterCookiesMode ?? "always";
@@ -204,8 +220,9 @@ async function load() {
 
   const modeRadio = document.querySelector(`input[name="saveMode"][value="${current.saveMode}"]`);
   if (modeRadio) modeRadio.checked = true;
-  renderFilenameMode();
   renderRangeFilenameMode();
+  renderVideoImageFilenameModes();
+  renderFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
   const twtRadio = document.querySelector(`input[name="twitter-cookies-mode"][value="${current.twitterCookiesMode}"]`);
@@ -257,7 +274,10 @@ async function save() {
     return;
   }
   current.filenameMode = filenameModeEl?.value || DEFAULT_FILENAME_SCHEME;
-  current.rangeFilenameMode = rangeFilenameModeEl?.value || DEFAULT_FILENAME_SCHEME;
+  current.multipleFilenameMode = multipleFilenameModeEl?.value || DEFAULT_MULTIPLE_FILENAME_SCHEME;
+  current.rangeFilenameMode = rangeFilenameModeEl?.value || DEFAULT_RANGE_FILENAME_SCHEME;
+  current.thumbnailFilenameMode = thumbnailFilenameModeEl?.value || DEFAULT_THUMBNAIL_FILENAME_SCHEME;
+  current.frameFilenameMode = frameFilenameModeEl?.value || DEFAULT_FRAME_FILENAME_SCHEME;
   current.integratedButtonSettings = readIntegratedButtonSettings();
   current.twitterCookiesMode = document.querySelector('input[name="twitter-cookies-mode"]:checked')?.value ?? "always";
   current.youtubeCookiesMode = document.querySelector('input[name="youtube-cookies-mode"]:checked')?.value ?? "always";
@@ -274,7 +294,10 @@ async function save() {
       saveMode: current.saveMode,
       specificDestDir: current.specificDestDir,
       filenameMode: current.filenameMode,
+      multipleFilenameMode: current.multipleFilenameMode,
       rangeFilenameMode: current.rangeFilenameMode,
+      thumbnailFilenameMode: current.thumbnailFilenameMode,
+      frameFilenameMode: current.frameFilenameMode,
       customFilenameSchemes: current.customFilenameSchemes,
       integratedButtonSettings: current.integratedButtonSettings,
       twitterCookiesMode: current.twitterCookiesMode,
@@ -288,30 +311,52 @@ async function save() {
 }
 
 function renderFilenameMode() {
-  if (!filenameModeEl) return;
-  const previous = filenameModeEl.value || current.filenameMode;
-  filenameModeEl.innerHTML = "";
-  for (const opt of filenameSchemeOptions(current.customFilenameSchemes)) {
-    filenameModeEl.add(new Option(opt.label, opt.value));
+  current.filenameMode = renderFilenameSelect(filenameModeEl, current.filenameMode, DEFAULT_FILENAME_SCHEME, {
+    includeGalleryOnly: false,
+    includeOriginal: true,
+  });
+  current.multipleFilenameMode = renderFilenameSelect(
+    multipleFilenameModeEl,
+    current.multipleFilenameMode,
+    DEFAULT_MULTIPLE_FILENAME_SCHEME,
+    { includeGalleryOnly: true, includeOriginal: false },
+  );
+}
+
+function renderFilenameSelect(sel, currentValue, fallback, options = {}) {
+  if (!sel) return fallback;
+  const previous = sel.value || currentValue;
+  sel.innerHTML = "";
+  for (const opt of filenameSchemeOptions(current.customFilenameSchemes, options)) {
+    if (opt.value === "setEach") continue;
+    sel.add(new Option(opt.label, opt.value));
   }
-  filenameModeEl.value = [...filenameModeEl.options].some((o) => o.value === previous)
-    ? previous
-    : DEFAULT_FILENAME_SCHEME;
-  current.filenameMode = filenameModeEl.value;
+  sel.value = [...sel.options].some((o) => o.value === previous) ? previous : fallback;
+  return sel.value;
 }
 
 function renderRangeFilenameMode() {
-  if (!rangeFilenameModeEl) return;
-  const previous = rangeFilenameModeEl.value || current.rangeFilenameMode;
-  rangeFilenameModeEl.innerHTML = "";
-  for (const opt of filenameSchemeOptions(current.customFilenameSchemes, { includeGalleryOnly: false, includeOriginal: false })) {
-    if (opt.value === "setEach") continue;
-    rangeFilenameModeEl.add(new Option(opt.label, opt.value));
-  }
-  rangeFilenameModeEl.value = [...rangeFilenameModeEl.options].some((o) => o.value === previous)
-    ? previous
-    : DEFAULT_FILENAME_SCHEME;
-  current.rangeFilenameMode = rangeFilenameModeEl.value;
+  current.rangeFilenameMode = renderFilenameSelect(
+    rangeFilenameModeEl,
+    current.rangeFilenameMode,
+    DEFAULT_RANGE_FILENAME_SCHEME,
+    { includeGalleryOnly: false, includeOriginal: false, includeRangeOnly: true },
+  );
+}
+
+function renderVideoImageFilenameModes() {
+  current.thumbnailFilenameMode = renderFilenameSelect(
+    thumbnailFilenameModeEl,
+    current.thumbnailFilenameMode,
+    DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+    { includeGalleryOnly: false, includeOriginal: false, includeVideoImageOnly: true },
+  );
+  current.frameFilenameMode = renderFilenameSelect(
+    frameFilenameModeEl,
+    current.frameFilenameMode,
+    DEFAULT_FRAME_FILENAME_SCHEME,
+    { includeGalleryOnly: false, includeOriginal: false, includeVideoImageOnly: true },
+  );
 }
 
 function migrateIntegratedButtonSettings(raw) {
@@ -405,8 +450,9 @@ function renderCustomSchemes() {
     remove.textContent = "Remove";
     remove.onclick = () => {
       current.customFilenameSchemes = current.customFilenameSchemes.filter((s) => s.id !== scheme.id);
-      renderFilenameMode();
       renderRangeFilenameMode();
+      renderVideoImageFilenameModes();
+      renderFilenameMode();
       renderCustomSchemes();
       renderIntegratedCategories();
     };
@@ -430,8 +476,9 @@ function addCustomScheme() {
   customSchemeNameEl.value = "";
   customSchemeTemplateEl.value = "";
   hideError();
-  renderFilenameMode();
   renderRangeFilenameMode();
+  renderVideoImageFilenameModes();
+  renderFilenameMode();
   renderCustomSchemes();
   renderIntegratedCategories();
 }

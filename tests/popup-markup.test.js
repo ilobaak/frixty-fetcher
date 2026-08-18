@@ -11,14 +11,13 @@ describe("popup markup", () => {
     expect(popupHtml).toContain("Download to a new folder in destination");
     expect(popupHtml).toContain("<span>New folder name</span>");
     expect(popupHtml).toContain('placeholder="New folder name"');
-    expect(popupHtml).toContain('value="title-uploader-source" selected');
-    expect(popupHtml).toContain("[Title] -- [@Poster] -- [Source]");
+    expect(popupHtml).toContain('value="uploader-title-source" selected');
+    expect(popupHtml).toContain("[@Poster] -- [Title] -- [Source]");
     expect(popupHtml).toContain('<option value="title-uploader">[Title] -- [@Poster]</option>');
     expect(popupHtml).toContain('<option value="uploader-title">[@Poster] -- [Title]</option>');
     expect(optionsHtml).toContain("<h2>Default Download Filenames</h2>");
     expect(optionsHtml).toContain('id="filename-mode"');
-    expect(optionsHtml).toContain("[Title] -- [@Poster]");
-    expect(optionsHtml).toContain("[Title] -- [@Poster] -- [Source]");
+    expect(optionsHtml).toContain('id="multiple-filename-mode"');
   });
 
   it("offers gallery media-type selection controls", () => {
@@ -95,12 +94,18 @@ describe("popup markup", () => {
   it("adds options for integrated buttons and custom filename schemes", () => {
     expect(optionsHtml).toContain('id="integrated-categories"');
     expect(optionsHtml).toContain('id="range-filename-mode"');
+    expect(optionsHtml).toContain('id="thumbnail-filename-mode"');
+    expect(optionsHtml).toContain('id="frame-filename-mode"');
     expect(optionsHtml).toContain('id="custom-schemes"');
     expect(optionsHtml).toContain('id="custom-scheme-template"');
-    expect(optionsHtml).toContain("[Start]");
-    expect(optionsHtml).toContain("[End]");
+    expect(optionsHtml).not.toContain("<code>[Start]</code>");
+    expect(optionsHtml).not.toContain("<code>[End]</code>");
+    expect(optionsHtml).toContain("[Start Time]");
+    expect(optionsHtml).toContain("[End Time]");
+    expect(optionsHtml).toContain("[Frame Time]");
+    expect(optionsHtml).toContain("[Frame Number]");
     expect(optionsHtml).toContain("Media or post title");
     expect(optionsHtml).toContain("Site token");
-    expect(optionsHtml).toContain("Video range start time");
+    expect(optionsHtml).toContain("Video range start in");
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  filenameTimeToken,
   framePreviewKey,
   frameTimestampFilenameSuffix,
   frameTimestampPrefill,
@@ -58,6 +59,12 @@ describe("timestamp helpers", () => {
     expect(frameTimestampFilenameSuffix(0)).toBe("0-00");
     expect(frameTimestampFilenameSuffix(83.5)).toBe("1-23.500");
     expect(frameTimestampFilenameSuffix(3723.25)).toBe("1-02-03.250");
+  });
+
+  it("formats filename time tokens as HH.MM.SS.milliseconds", () => {
+    expect(filenameTimeToken(0)).toBe("00.00.00.000");
+    expect(filenameTimeToken(83.5)).toBe("00.01.23.500");
+    expect(filenameTimeToken(3723.25)).toBe("01.02.03.250");
   });
 
   it("keys frame previews by url and timestamp", () => {

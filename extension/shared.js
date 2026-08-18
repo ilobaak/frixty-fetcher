@@ -153,9 +153,43 @@ export function pickHandleText(uploaderId, uploader) {
   return normalizeHandle(uploader);
 }
 
-export const DEFAULT_FILENAME_SCHEME = "title-uploader-source";
+export const DEFAULT_FILENAME_SCHEME = "uploader-title-source";
+export const DEFAULT_MULTIPLE_FILENAME_SCHEME = "uploader-title-source-index";
+export const DEFAULT_RANGE_FILENAME_SCHEME = "uploader-title-range-source";
+export const DEFAULT_THUMBNAIL_FILENAME_SCHEME = "uploader-title-source-thumbnail";
+export const DEFAULT_FRAME_FILENAME_SCHEME = "uploader-title-frame-source";
 
 export const BUILTIN_FILENAME_SCHEMES = [
+  {
+    value: "uploader-title-source",
+    label: "[@Poster] -- [Title] -- [Source]",
+    template: "[@Poster] -- [Title] -- [Source]",
+    galleryIndex: true,
+  },
+  {
+    value: "uploader-title-source-index",
+    label: "[@Poster] -- [Title] -- [Source] - [Index]",
+    template: "[@Poster] -- [Title] -- [Source] - [Index]",
+    galleryOnly: true,
+  },
+  {
+    value: "uploader-title-range-source",
+    label: "[@Poster] -- [Title] -- S[Start Time] -- E[End Time] -- [Source]",
+    template: "[@Poster] -- [Title] -- S[Start Time] -- E[End Time] -- [Source]",
+    rangeOnly: true,
+  },
+  {
+    value: "uploader-title-source-thumbnail",
+    label: "[@Poster] -- [Title] -- [Source] -- thumbnail",
+    template: "[@Poster] -- [Title] -- [Source] -- thumbnail",
+    videoImageOnly: true,
+  },
+  {
+    value: "uploader-title-frame-source",
+    label: "[@Poster] -- [Title] -- FRAME[Frame Time] -- [Source]",
+    template: "[@Poster] -- [Title] -- FRAME[Frame Time] -- [Source]",
+    videoImageOnly: true,
+  },
   {
     value: "title-uploader-source",
     label: "[Title] -- [@Poster] -- [Source]",
@@ -237,11 +271,18 @@ export function normalizeCustomFilenameSchemes(raw) {
 
 export function filenameSchemeOptions(
   customSchemes = [],
-  { includeGalleryOnly = true, includeOriginal = true } = {},
+  {
+    includeGalleryOnly = true,
+    includeOriginal = true,
+    includeRangeOnly = false,
+    includeVideoImageOnly = false,
+  } = {},
 ) {
   const builtins = BUILTIN_FILENAME_SCHEMES.filter((s) => {
     if (!includeGalleryOnly && s.galleryOnly) return false;
     if (!includeOriginal && s.value === "original") return false;
+    if (!includeRangeOnly && s.rangeOnly) return false;
+    if (!includeVideoImageOnly && s.videoImageOnly) return false;
     return true;
   });
   return [
@@ -276,20 +317,28 @@ export function applyFilenameTemplate(template, tokens = {}) {
     "[Site]": tokens.source || "",
     "[site]": tokens.source || "",
     "[Index]": tokens.index || "",
-    "[Start]": tokens.start || "",
-    "[Start Time]": tokens.start || "",
-    "[start time]": tokens.start || "",
-    "[End]": tokens.end || "",
-    "[End Time]": tokens.end || "",
-    "[end time]": tokens.end || "",
+    "[Start Time]": tokens.startTime || tokens.start || "",
+    "[start time]": tokens.startTime || tokens.start || "",
+    "[End Time]": tokens.endTime || tokens.end || "",
+    "[end time]": tokens.endTime || tokens.end || "",
+    "[Frame Time]": tokens.frameTime || "",
+    "[frame time]": tokens.frameTime || "",
+    "[Frame Number]": tokens.frameNumber || "",
+    "[frame number]": tokens.frameNumber || "",
   };
   for (const [token, value] of Object.entries(replacements)) {
     out = out.split(token).join(String(value || ""));
   }
   return out
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/(?:\s+--\s*){2,}/g, " -- ")
+    .replace(/(?:\s+-\s*){2,}/g, " - ")
     .replace(/\s+--\s+(?=--|$)/g, " -- ")
+    .replace(/\s+-\s+(?=-|$)/g, " - ")
     .replace(/(^|\s)--\s*$/g, "")
     .replace(/^\s*--\s*/g, "")
+    .replace(/(^|\s)-\s*$/g, "")
+    .replace(/^\s*-\s*/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -345,11 +394,30 @@ export function resolveFilenameMode(s) {
   return raw === "default" || raw === "uploader-title-source" ? DEFAULT_FILENAME_SCHEME : raw;
 }
 
+export function resolveMultipleFilenameMode(s) {
+  const raw = s.multipleFilenameMode ?? s.galleryFilenameMode;
+  if (raw === "default" || raw === undefined) return DEFAULT_MULTIPLE_FILENAME_SCHEME;
+  if (raw === "uploader-title-source") return DEFAULT_MULTIPLE_FILENAME_SCHEME;
+  return raw;
+}
+
 export function resolveRangeFilenameMode(s) {
-  const raw = s.rangeFilenameMode ?? s.videoRangeFilenameMode ?? s.filenameMode;
+  const raw = s.rangeFilenameMode ?? s.videoRangeFilenameMode;
   if (raw === "default" || raw === "uploader-title-source" || raw === undefined) {
-    return DEFAULT_FILENAME_SCHEME;
+    return DEFAULT_RANGE_FILENAME_SCHEME;
   }
+  return raw;
+}
+
+export function resolveThumbnailFilenameMode(s) {
+  const raw = s.thumbnailFilenameMode ?? s.videoThumbnailFilenameMode;
+  if (raw === "default" || raw === undefined) return DEFAULT_THUMBNAIL_FILENAME_SCHEME;
+  return raw;
+}
+
+export function resolveFrameFilenameMode(s) {
+  const raw = s.frameFilenameMode ?? s.videoFrameFilenameMode;
+  if (raw === "default" || raw === undefined) return DEFAULT_FRAME_FILENAME_SCHEME;
   return raw;
 }
 
@@ -363,6 +431,8 @@ export function migrateFilenameSettings(settings) {
     settings.imageFilenameMode !== undefined ||
     settings.galleryFilenameMode !== undefined ||
     settings.videoRangeFilenameMode !== undefined ||
+    settings.videoThumbnailFilenameMode !== undefined ||
+    settings.videoFrameFilenameMode !== undefined ||
     settings.useOriginalFilenames !== undefined;
   if (!hasLegacy && settings.filenameMode !== undefined) return null;
 
@@ -375,14 +445,25 @@ export function migrateFilenameSettings(settings) {
   } else if (next.filenameMode === "uploader-title-source") {
     next.filenameMode = DEFAULT_FILENAME_SCHEME;
   }
+  if (next.multipleFilenameMode === undefined && next.galleryFilenameMode !== undefined) {
+    next.multipleFilenameMode = resolveMultipleFilenameMode(next);
+  }
   if (next.rangeFilenameMode === undefined && next.videoRangeFilenameMode !== undefined) {
     next.rangeFilenameMode = resolveRangeFilenameMode(next);
   } else if (next.rangeFilenameMode === "uploader-title-source") {
-    next.rangeFilenameMode = DEFAULT_FILENAME_SCHEME;
+    next.rangeFilenameMode = DEFAULT_RANGE_FILENAME_SCHEME;
+  }
+  if (next.thumbnailFilenameMode === undefined && next.videoThumbnailFilenameMode !== undefined) {
+    next.thumbnailFilenameMode = resolveThumbnailFilenameMode(next);
+  }
+  if (next.frameFilenameMode === undefined && next.videoFrameFilenameMode !== undefined) {
+    next.frameFilenameMode = resolveFrameFilenameMode(next);
   }
   delete next.imageFilenameMode;
   delete next.galleryFilenameMode;
   delete next.videoRangeFilenameMode;
+  delete next.videoThumbnailFilenameMode;
+  delete next.videoFrameFilenameMode;
   delete next.useOriginalFilenames;
   return next;
 }

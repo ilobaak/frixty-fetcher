@@ -96,11 +96,22 @@ describe("popup naming modes", () => {
     expect(functionBody("startGallerySingleItem")).toContain("filenameBaseFromMode");
   });
 
-  it("adds start and end timestamps to video range filenames", () => {
+  it("uses range filename tokens without appending an extra suffix", () => {
     const body = functionBody("startRangeDownload");
-    expect(body).toContain("rangeSuffix = `-- S${startLabel} -- E${endLabel}`");
     expect(body).toContain("saveSettings.rangeFilenameMode");
-    expect(body).toContain("suffixAlreadyPresent");
+    expect(body).toContain("startTime: filenameTimeToken(start.seconds)");
+    expect(body).toContain("endTime: filenameTimeToken(end.seconds)");
+    expect(body).not.toContain("rangeSuffix");
+    expect(body).not.toContain("suffixAlreadyPresent");
+  });
+
+  it("uses separate thumbnail and frame filename defaults", () => {
+    const body = functionBody("videoToolBaseName");
+    expect(body).toContain("saveSettings.thumbnailFilenameMode");
+    expect(body).toContain("saveSettings.frameFilenameMode");
+    expect(body).toContain("frameTime: filenameTimeToken(seconds)");
+    expect(functionBody("startThumbnailDownload")).toContain('videoToolBaseName("thumbnail")');
+    expect(functionBody("startFrameDownload")).toContain('videoToolBaseName("frame", seconds)');
   });
 
   it("uses bounded timestamps for range preview requests", () => {
@@ -116,6 +127,11 @@ describe("popup naming modes", () => {
 describe("options filename controls", () => {
   it("renders filename defaults and integrated rows as dropdown controls", () => {
     expect(optionsSource).toContain('const filenameModeEl = el("filename-mode")');
+    expect(optionsSource).toContain('const multipleFilenameModeEl = el("multiple-filename-mode")');
+    expect(optionsSource).toContain(
+      'const thumbnailFilenameModeEl = el("thumbnail-filename-mode")',
+    );
+    expect(optionsSource).toContain('const frameFilenameModeEl = el("frame-filename-mode")');
     expect(optionsSource).toContain("function renderFilenameMode()");
     expect(optionsSource).toContain('new Option("Downloads media", "download")');
     expect(optionsSource).toContain('new Option("Fetches to extension", "fetch")');

@@ -34,9 +34,16 @@ import {
   extensionFromUrl,
   sanitizeFilenameSegment,
   resolveFilenameMode,
+  resolveMultipleFilenameMode,
   resolveRangeFilenameMode,
+  resolveThumbnailFilenameMode,
+  resolveFrameFilenameMode,
   migrateFilenameSettings,
   DEFAULT_FILENAME_SCHEME,
+  DEFAULT_MULTIPLE_FILENAME_SCHEME,
+  DEFAULT_RANGE_FILENAME_SCHEME,
+  DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+  DEFAULT_FRAME_FILENAME_SCHEME,
   applyFilenameTemplate,
   filenameSchemeOptions,
   filenameTemplateForMode,
@@ -52,8 +59,8 @@ import {
 import { friendlyError } from "./popup-errors.js";
 import {
   formatTimestamp,
+  filenameTimeToken,
   framePreviewKey,
-  frameTimestampFilenameSuffix,
   frameTimestampSelection,
   rangePreviewTimestamp,
   resolveFrameTimestampPrefill,
@@ -252,7 +259,10 @@ const saveSettings = {
   // guarantees unique filenames inside a gallery (title alone collides
   // when every item shares the post title).
   filenameMode: DEFAULT_FILENAME_SCHEME,
-  rangeFilenameMode: DEFAULT_FILENAME_SCHEME,
+  multipleFilenameMode: DEFAULT_MULTIPLE_FILENAME_SCHEME,
+  rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
+  thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+  frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
   customFilenameSchemes: [],
   // Shared download-location state applied to every picker (single
   // video, single image, multi-item gallery). Replaces the older
@@ -313,7 +323,10 @@ async function init() {
   saveSettings.specificDestDir = s.specificDestDir ?? "";
   saveSettings.lastDir = s.lastDir ?? "";
   saveSettings.filenameMode = resolveFilenameMode(s);
+  saveSettings.multipleFilenameMode = resolveMultipleFilenameMode(s);
   saveSettings.rangeFilenameMode = resolveRangeFilenameMode(s);
+  saveSettings.thumbnailFilenameMode = resolveThumbnailFilenameMode(s);
+  saveSettings.frameFilenameMode = resolveFrameFilenameMode(s);
   saveSettings.customFilenameSchemes = normalizeCustomFilenameSchemes(s.customFilenameSchemes);
   // Migration: old gallery-only keys → shared names. The ConfirmEach
   // flag inverts: "confirm-each = true" meant "prompt per file" which
@@ -1901,7 +1914,18 @@ function sourceToken() {
   return sourceTokenFromUrl(tabUrl);
 }
 
-function filenameBaseFromMode(mode, { title = "", handle = "", index = "", start = "", end = "" } = {}) {
+function filenameBaseFromMode(
+  mode,
+  {
+    title = "",
+    handle = "",
+    index = "",
+    startTime = "",
+    endTime = "",
+    frameTime = "",
+    frameNumber = "",
+  } = {},
+) {
   const poster = normalizeHandle(handle);
   const cleanTitle = String(title || "").replace(/\s+/g, " ").trim();
   const template = filenameTemplateForMode(mode, saveSettings.customFilenameSchemes);
@@ -1911,8 +1935,10 @@ function filenameBaseFromMode(mode, { title = "", handle = "", index = "", start
       poster,
       source: sourceToken(),
       index,
-      start,
-      end,
+      startTime,
+      endTime,
+      frameTime,
+      frameNumber,
     });
   }
   if (mode === "title-uploader" && poster) return `${cleanTitle} -- ${poster}`.trim();
@@ -2009,11 +2035,19 @@ function startDownload() {
   inlineRenderRunning({ percent: 0 });
 }
 
-function youtubeBaseName(kind, seconds = 0) {
+function videoToolBaseName(kind, seconds = 0) {
   const handle = pickHandleText(currentUploaderId, currentUploader);
-  const base = handle ? `${handle} - ${currentTitle}` : currentTitle;
-  if (kind === "thumbnail") return buildSafeFilename(`${base} thumbnail`, "jpg");
-  return buildSafeFilename(`${base} frame ${frameTimestampFilenameSuffix(seconds)}`, "png");
+  const mode =
+    kind === "thumbnail"
+      ? saveSettings.thumbnailFilenameMode
+      : saveSettings.frameFilenameMode;
+  const base = filenameBaseFromMode(mode, {
+    title: currentTitle,
+    handle,
+    frameTime: filenameTimeToken(seconds),
+    frameNumber: "",
+  });
+  return buildSafeFilename(base, kind === "thumbnail" ? "jpg" : "png");
 }
 
 function startThumbnailDownload() {
@@ -2027,7 +2061,7 @@ function startThumbnailDownload() {
     jobId: crypto.randomUUID(),
     url: currentThumbnail,
     pageUrl: tabUrl,
-    defaultFileName: youtubeBaseName("thumbnail"),
+    defaultFileName: videoToolBaseName("thumbnail"),
   };
   if (!saveSettings.downloadAutomatically) {
     msg.askPath = true;
@@ -2061,7 +2095,7 @@ function startFrameDownload(seconds) {
     pageUrl: tabUrl,
     timestamp: seconds,
     useCookies: effectiveUseCookies,
-    defaultFileName: youtubeBaseName("frame", seconds),
+    defaultFileName: videoToolBaseName("frame", seconds),
   };
   if (!saveSettings.downloadAutomatically) {
     msg.askPath = true;
@@ -2092,20 +2126,16 @@ function startRangeDownload() {
   const kind = currentKind();
   const height = parseInt(el("quality").value, 10) || 0;
   const includeSubs = false;
-  const fnMode = saveSettings.rangeFilenameMode || saveSettings.filenameMode || selectedVideoFilenameMode();
+  const fnMode = saveSettings.rangeFilenameMode || DEFAULT_RANGE_FILENAME_SCHEME;
   const customName = fnMode === "set" ? (el("video-filename-custom")?.value || "").trim() : "";
   const handle = pickHandleText(currentUploaderId, currentUploader);
-  const startLabel = frameTimestampFilenameSuffix(start.seconds);
-  const endLabel = frameTimestampFilenameSuffix(end.seconds);
-  const rangeSuffix = `-- S${startLabel} -- E${endLabel}`;
   const base = customName || filenameBaseFromMode(fnMode, {
     title: currentTitle,
     handle,
-    start: startLabel,
-    end: endLabel,
+    startTime: filenameTimeToken(start.seconds),
+    endTime: filenameTimeToken(end.seconds),
   });
-  const suffixAlreadyPresent = String(base).includes(`S${startLabel}`) && String(base).includes(`E${endLabel}`);
-  const finalBase = suffixAlreadyPresent ? base : `${base} ${rangeSuffix}`;
+  const finalBase = base;
   const safeBase = buildSafeFilename(finalBase, "__EXT__").replace(/\.__EXT__$/, "");
   const msg = {
     cmd: "download",
@@ -2526,7 +2556,7 @@ function renderGalleryItems(items) {
   const list = el("gallery-items");
   list.innerHTML = "";
   const total = items.length;
-  const defaultFilename = saveSettings.filenameMode || "uploader-title";
+  const defaultFilename = saveSettings.multipleFilenameMode || DEFAULT_MULTIPLE_FILENAME_SCHEME;
 
   items.forEach((item, idx) => {
     const isVideo = item.mime && item.mime.startsWith("video/");
@@ -2678,7 +2708,10 @@ function renderGalleryItems(items) {
       ev.stopPropagation();
       ev.preventDefault();
       const rowNow = saveBtn.closest(".media-card");
-      const filenameMode = rowNow?.querySelector(".gallery-item-filename")?.value || saveSettings.filenameMode;
+      const filenameMode =
+        rowNow?.querySelector(".gallery-item-filename")?.value ||
+        saveSettings.multipleFilenameMode ||
+        DEFAULT_MULTIPLE_FILENAME_SCHEME;
       const customName = filenameMode === "setEach"
         ? (rowNow?.querySelector(".gallery-item-filename-custom")?.value || "").trim()
         : "";
@@ -2859,7 +2892,7 @@ function selectedGalleryItems() {
     const fCustom = row?.querySelector(".gallery-item-filename-custom");
     const kind = kSel?.value || "combined";
     const maxHeight = qSel ? (parseInt(qSel.value, 10) || 0) : 0;
-    const filenameMode = fSel?.value || "uploader-title";
+    const filenameMode = fSel?.value || saveSettings.multipleFilenameMode || DEFAULT_MULTIPLE_FILENAME_SCHEME;
     // Only read the custom input when the mode is actually "setEach" —
     // stale text from earlier mode toggles is ignored.
     const customName = filenameMode === "setEach"
@@ -2940,8 +2973,10 @@ async function startGalleryDownload() {
   // selects always win at download time.
   const modeCounts = {};
   for (const s of selected) modeCounts[s.filenameMode] = (modeCounts[s.filenameMode] || 0) + 1;
-  const dominantMode = Object.entries(modeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "uploader-title";
-  await persistSetting("filenameMode", dominantMode);
+  const dominantMode =
+    Object.entries(modeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+    DEFAULT_MULTIPLE_FILENAME_SCHEME;
+  await persistSetting("multipleFilenameMode", dominantMode);
 
   // Single-item selection: route through the single-file downloadUrl path
   // so the file lands directly in the chosen folder (no album subfolder,

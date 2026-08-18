@@ -131,26 +131,31 @@
       Nothing leaves your machine.
     </p>
 
-    <h2>Default Download Filenames</h2>
-    <label class="card-control">
-      <span>Default scheme</span>
-      <select id="filename-mode"></select>
-    </label>
-    <p class="muted" style="margin-top: 4px">
-      Default for new downloads; the popup's per-item dropdowns pre-fill from here and remember your
-      most recent choice. The <code>[Index]</code> suffix is appended automatically when a gallery
-      has more than one item.
-    </p>
-
     <h2>Video range download filenames</h2>
     <label class="card-control">
       <span>Default scheme</span>
       <select id="range-filename-mode"></select>
     </label>
-    <p class="muted" style="margin-top: 4px">
-      Range downloads append <code>-- S[Start] -- E[End]</code> unless the selected custom scheme
-      already uses both time tokens.
-    </p>
+
+    <h2>Video image tools download filenames</h2>
+    <label class="card-control">
+      <span>Thumbnail</span>
+      <select id="thumbnail-filename-mode"></select>
+    </label>
+    <label class="card-control">
+      <span>Frame</span>
+      <select id="frame-filename-mode"></select>
+    </label>
+
+    <h2>Default Download Filenames</h2>
+    <label class="card-control">
+      <span>Default scheme - single download</span>
+      <select id="filename-mode"></select>
+    </label>
+    <label class="card-control">
+      <span>Default scheme - multiple downloads</span>
+      <select id="multiple-filename-mode"></select>
+    </label>
 
     <h2>Integrated download buttons</h2>
     <div id="integrated-categories"></div>
@@ -162,7 +167,7 @@
       <input
         id="custom-scheme-template"
         type="text"
-        placeholder="[Title] -- [@Poster] -- [Source] -- S[Start] -- E[End]"
+        placeholder="[@Poster] -- [Title] -- [Source] -- FRAME[Frame Time]"
       />
       <button id="add-custom-scheme" type="button">Add scheme</button>
     </div>
@@ -183,28 +188,47 @@
       </div>
       <div>
         <code>[Index]</code
-        ><span>Gallery item number, for example <code>01</code>, <code>02</code>.</span>
+        ><span
+          >Gallery item number. Example:
+          <code>[@Poster] -- [Title] -- [Source] - [Index]</code> becomes
+          <code>@user -- Title -- reddit - 01</code>.</span
+        >
       </div>
       <div>
-        <code>[Start]</code
-        ><span>Video range start time for filenames, for example <code>0-15</code>.</span>
+        <code>[Start Time]</code
+        ><span
+          >Video range start in <code>HH.MM.SS.milliseconds</code>. Example:
+          <code>00.00.15.250</code>.</span
+        >
       </div>
       <div>
-        <code>[End]</code
-        ><span>Video range end time for filenames, for example <code>1-30</code>.</span>
+        <code>[End Time]</code
+        ><span
+          >Video range end in <code>HH.MM.SS.milliseconds</code>. Example:
+          <code>00.01.30.000</code>.</span
+        >
       </div>
       <div>
-        <code>[Start Time]</code><span>Alias for <code>[Start]</code>.</span>
+        <code>[Frame Time]</code
+        ><span
+          >Selected frame timestamp in <code>HH.MM.SS.milliseconds</code>. Example:
+          <code>00.00.42.500</code>.</span
+        >
       </div>
       <div>
-        <code>[End Time]</code><span>Alias for <code>[End]</code>.</span>
+        <code>[Frame Number]</code
+        ><span
+          >Frame number when the source reports enough timing detail. If unavailable, it is left
+          blank.</span
+        >
       </div>
       <div>
         <code>Examples</code
         ><span
-          ><code>[Title] -- [@Poster] -- [Source]</code> becomes
-          <code>Title -- @user -- x.com</code>. Gallery downloads append the item index when
-          needed.</span
+          ><code>[@Poster] -- [Title] -- [Source]</code> becomes
+          <code>@user -- Title -- x.com</code>.
+          <code>[@Poster] -- [Title] -- S[Start Time] -- E[End Time] -- [Source]</code> becomes
+          <code>@user -- Title -- S00.00.10.000 -- E00.00.45.000 -- youtube</code>.</span
         >
       </div>
     </div>

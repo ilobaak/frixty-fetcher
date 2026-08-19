@@ -69,23 +69,23 @@ describe("timestamp helpers", () => {
     expect(frameTimestampFilenameSuffix(3723.25)).toBe("1-02-03.250");
   });
 
-  it("formats filename time tokens as HH.MM.SS.milliseconds", () => {
+  it("formats filename time tokens as [HH].[MM].[SS].[milliseconds]", () => {
     expect(filenameTimeToken(0)).toBe("00.00.00.000");
     expect(filenameTimeToken(83.5)).toBe("00.01.23.500");
     expect(filenameTimeToken(3723.25)).toBe("01.02.03.250");
-    expect(DEFAULT_TIME_TOKEN_FORMAT).toBe("hh.mm.ss.mmm");
+    expect(DEFAULT_TIME_TOKEN_FORMAT).toBe("[HH].[MM].[SS].[milliseconds]");
   });
 
   it("formats filename time tokens with the selected format", () => {
-    expect(TIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain('hh:mm"ss');
-    expect(filenameTimeToken(3723.25, "hh-mm-ss-mmm")).toBe("01-02-03-250");
-    expect(filenameTimeToken(3723.25, "hh:mm:ss.mmm")).toBe("01:02:03.250");
-    expect(filenameTimeToken(3723.25, 'hh:mm"ss')).toBe('01:02"03');
-    expect(filenameTimeToken(3723.25, "hh.mm.ss")).toBe("01.02.03");
+    expect(TIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain('[HH]:[MM]"[SS]');
+    expect(filenameTimeToken(3723.25, "[HH]-[MM]-[SS]-[milliseconds]")).toBe("01-02-03-250");
+    expect(filenameTimeToken(3723.25, "[HH]:[MM]:[SS].[milliseconds]")).toBe("01:02:03.250");
+    expect(filenameTimeToken(3723.25, '[HH]:[MM]"[SS]')).toBe('01:02"03');
+    expect(filenameTimeToken(3723.25, "[HH].[MM].[SS]")).toBe("01.02.03");
   });
 
   it("formats filename time tokens with custom patterns", () => {
-    const custom = [{ id: "compact", name: "Compact", pattern: "HH_MM_SS_milliseconds" }];
+    const custom = [{ id: "compact", name: "Compact", pattern: "[HH]_[MM]_[SS]_[milliseconds]" }];
     expect(filenameTimeToken(3723.25, "custom:compact", custom)).toBe("01_02_03_250");
     expect(filenameTimeToken(3723.25, "custom:missing", custom)).toBe("01.02.03.250");
   });
@@ -93,11 +93,11 @@ describe("timestamp helpers", () => {
   it("normalizes custom time token formats", () => {
     expect(
       normalizeCustomTimeTokenFormats([
-        { id: "a", name: "Readable", pattern: 'HH.MM"SS' },
-        { id: "a", name: "Duplicate", pattern: "HH" },
-        { id: "b", name: "", pattern: "MM" },
+        { id: "a", name: "Readable", pattern: '[HH].[MM]"[SS]' },
+        { id: "a", name: "Duplicate", pattern: "[HH]" },
+        { id: "b", name: "", pattern: "[MM]" },
       ]),
-    ).toEqual([{ id: "a", name: "Readable", pattern: 'HH.MM"SS' }]);
+    ).toEqual([{ id: "a", name: "Readable", pattern: '[HH].[MM]"[SS]' }]);
   });
 
   it("formats datetime tokens with local datetime parts", () => {
@@ -112,18 +112,26 @@ describe("timestamp helpers", () => {
       seconds: "04",
       milliseconds: "125",
     });
-    expect(DEFAULT_DATETIME_TOKEN_FORMAT).toBe("yyyy.mm.dd-hh.mm.ss");
+    expect(DEFAULT_DATETIME_TOKEN_FORMAT).toBe("[YYYY].[MM].[DD]-[HH].[mm].[SS]");
     expect(filenameDatetimeToken(date)).toBe("2026.08.18-17.49.04");
   });
 
   it("formats datetime tokens with selected and custom formats", () => {
     const date = new Date(2026, 7, 18, 17, 49, 4, 125);
     const custom = [
-      { id: "readable", name: "Readable", pattern: "YYYY-MM-DD HH-mm-SS-milliseconds" },
+      {
+        id: "readable",
+        name: "Readable",
+        pattern: "[YYYY]-[MM]-[DD] [HH]-[mm]-[SS]-[milliseconds]",
+      },
     ];
-    expect(DATETIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain("yyyymmdd-hhmmss");
-    expect(filenameDatetimeToken(date, "yyyy-mm-dd-hh.mm.ss")).toBe("2026-08-18-17.49.04");
-    expect(filenameDatetimeToken(date, "yyyymmdd-hhmmss")).toBe("20260818-174904");
+    expect(DATETIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain(
+      "[YYYY][MM][DD]-[HH][mm][SS]",
+    );
+    expect(filenameDatetimeToken(date, "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]")).toBe(
+      "2026-08-18-17.49.04",
+    );
+    expect(filenameDatetimeToken(date, "[YYYY][MM][DD]-[HH][mm][SS]")).toBe("20260818-174904");
     expect(filenameDatetimeToken(date, "custom:readable", custom)).toBe("2026-08-18 17-49-04-125");
     expect(filenameDatetimeToken(date, "custom:missing", custom)).toBe("2026.08.18-17.49.04");
   });

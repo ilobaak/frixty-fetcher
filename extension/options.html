@@ -184,13 +184,18 @@
     <div id="custom-time-formats"></div>
     <div class="specific-body custom-format-form" aria-disabled="false" style="margin-left: 0">
       <input id="custom-time-format-name" type="text" placeholder="Format name" />
-      <input id="custom-time-format-pattern" type="text" placeholder="HH.MM.SS.milliseconds" />
+      <input
+        id="custom-time-format-pattern"
+        type="text"
+        placeholder="[HH].[MM].[SS].[milliseconds]"
+      />
       <button id="add-custom-time-format" type="button">Add format</button>
     </div>
     <p id="custom-time-format-error" class="section-error" hidden></p>
     <p class="muted" style="margin-top: 4px">
-      Custom time formats can use <code>HH</code>, <code>MM</code>, <code>SS</code>, and
-      <code>milliseconds</code>.
+      Custom time formats can use <code>[HH]</code>, <code>[MM]</code>, <code>[SS]</code>, and
+      <code>[milliseconds]</code>. Example: <code>"[HH]-[MM]-[SS]"</code> becomes
+      <code>"01-02-03"</code>.
     </p>
 
     <h2>Datetime token format</h2>
@@ -201,14 +206,19 @@
     <div id="custom-datetime-formats"></div>
     <div class="specific-body custom-format-form" aria-disabled="false" style="margin-left: 0">
       <input id="custom-datetime-format-name" type="text" placeholder="Format name" />
-      <input id="custom-datetime-format-pattern" type="text" placeholder="YYYY.MM.DD-HH.mm.SS" />
+      <input
+        id="custom-datetime-format-pattern"
+        type="text"
+        placeholder="[YYYY].[MM].[DD]-[HH].[mm].[SS]"
+      />
       <button id="add-custom-datetime-format" type="button">Add format</button>
     </div>
     <p id="custom-datetime-format-error" class="section-error" hidden></p>
     <p class="muted" style="margin-top: 4px">
-      Custom datetime formats can use <code>YYYY</code>, <code>YY</code>, <code>MM</code>,
-      <code>DD</code>, <code>HH</code>, <code>mm</code>, <code>SS</code>, and
-      <code>milliseconds</code>.
+      Custom datetime formats can use <code>[YYYY]</code>, <code>[YY]</code>, <code>[MM]</code>,
+      <code>[DD]</code>, <code>[HH]</code>, <code>[mm]</code>, <code>[SS]</code>, and
+      <code>[milliseconds]</code>. Example: <code>"[YYYY]-[MM]-[DD] [HH].[mm]"</code> becomes
+      <code>"2026-08-18 17.49"</code>.
     </p>
 
     <h2>Custom filename schemes</h2>
@@ -243,7 +253,7 @@
         <code>[Index]</code
         ><span
           >Gallery item number. Example:
-          <code>[@Poster] -- [Title] -- [Source] - [Index]</code> becomes
+          <code>"[@Poster] -- [Title] -- [Source] - [Index]"</code> becomes
           <code>"@riverclips -- Midnight Train Review -- reddit - 01"</code>.</span
         >
       </div>
@@ -285,10 +295,11 @@
       <div>
         <code>Examples</code
         ><span
-          ><code>[@Poster] -- [Title] -- [Source]</code> becomes
+          ><code>"[@Poster] -- [Title] -- [Source]"</code> becomes
           <code>"@riverclips -- Midnight Train Review -- x.com"</code>.
           <code
-            >[@Poster] -- [Title] -- S([Video Start Time]) -- E([Video End Time]) -- [Source]</code
+            >"[@Poster] -- [Title] -- S([Video Start Time]) -- E([Video End Time]) --
+            [Source]"</code
           >
           becomes
           <code

@@ -172,6 +172,7 @@ describe("options filename controls", () => {
     expect(optionsSource).toContain("function showSectionError(");
     expect(optionsSource).toContain("Cannot save: that name is already taken.");
     expect(optionsSource).toContain("alert(message)");
+    expect(optionsSource).toContain("9000");
     expect(optionsSource).toContain("function renderBestAvailableQualityCap()");
     expect(optionsSource).toContain("bestAvailableMaxHeight");
     expect(optionsSource).toContain('new Option("Downloads media", "download")');

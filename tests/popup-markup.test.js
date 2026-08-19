@@ -111,6 +111,8 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="add-custom-time-format"');
     expect(optionsHtml).toContain('id="custom-time-format-error"');
     expect(optionsHtml).toContain("Custom time formats can use");
+    expect(optionsHtml).toContain("[HH]-[MM]-[SS]");
+    expect(optionsHtml).toContain('"01-02-03"');
     expect(optionsHtml).toContain('id="datetime-token-format"');
     expect(optionsHtml).toContain('id="custom-datetime-formats"');
     expect(optionsHtml).toContain('id="custom-datetime-format-name"');
@@ -118,6 +120,8 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="add-custom-datetime-format"');
     expect(optionsHtml).toContain('id="custom-datetime-format-error"');
     expect(optionsHtml).toContain("Custom datetime formats can use");
+    expect(optionsHtml).toContain("[YYYY]-[MM]-[DD] [HH].[mm]");
+    expect(optionsHtml).toContain('"2026-08-18 17.49"');
     expect(optionsHtml).toContain('id="reset-options"');
     expect(optionsHtml).toContain("Reset All Options");
     expect(optionsHtml).toContain("Thumbnail Download");
@@ -146,6 +150,8 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain("Media or post title");
     expect(optionsHtml).toContain("Site token");
     expect(optionsHtml).toContain("Video range start using the selected time format");
+    expect(optionsHtml).toContain('"[@Poster] -- [Title] -- [Source]"');
+    expect(optionsHtml).toContain('"[@Poster] -- [Title] -- [Source] - [Index]"');
     expect(optionsHtml).toContain('"Midnight Train Review"');
     expect(optionsHtml.indexOf("<h2>Integrated download buttons</h2>")).toBeLessThan(
       optionsHtml.indexOf("<h2>Time token format</h2>"),

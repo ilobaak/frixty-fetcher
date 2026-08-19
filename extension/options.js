@@ -87,6 +87,22 @@ const INTEGRATED_CATEGORIES = [
   ["other", "Other sites", false],
 ];
 
+const LEGACY_TIME_TOKEN_FORMATS = {
+  "hh.mm.ss.mmm": "[HH].[MM].[SS].[milliseconds]",
+  "hh-mm-ss-mmm": "[HH]-[MM]-[SS]-[milliseconds]",
+  "hh:mm:ss.mmm": "[HH]:[MM]:[SS].[milliseconds]",
+  'hh:mm"ss': '[HH]:[MM]"[SS]',
+  "hh.mm.ss": "[HH].[MM].[SS]",
+};
+
+const LEGACY_DATETIME_TOKEN_FORMATS = {
+  "yyyy.mm.dd-hh.mm.ss": "[YYYY].[MM].[DD]-[HH].[mm].[SS]",
+  "yyyy-mm-dd-hh.mm.ss": "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]",
+  "yyyy.mm.dd": "[YYYY].[MM].[DD]",
+  "yyyy-mm-dd": "[YYYY]-[MM]-[DD]",
+  "yyyymmdd-hhmmss": "[YYYY][MM][DD]-[HH][mm][SS]",
+};
+
 let current = {
   saveMode: DEFAULT_MODE,
   specificDestDir: "",
@@ -451,6 +467,7 @@ function renderVideoImageFilenameModes() {
 }
 
 function resolveTimeTokenFormat(value) {
+  if (Object.hasOwn(LEGACY_TIME_TOKEN_FORMATS, value)) return LEGACY_TIME_TOKEN_FORMATS[value];
   if (TIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.value === value)) return value;
   if (
     typeof value === "string" &&
@@ -488,7 +505,7 @@ function showSectionError(target, message, { alertUser = false } = {}) {
       target.hidden = true;
       target.textContent = "";
       sectionErrorTimers.delete(target);
-    }, 4500),
+    }, 9000),
   );
   if (alertUser) alert(message);
 }
@@ -568,6 +585,9 @@ function addCustomTimeFormat() {
 }
 
 function resolveDatetimeTokenFormat(value) {
+  if (Object.hasOwn(LEGACY_DATETIME_TOKEN_FORMATS, value)) {
+    return LEGACY_DATETIME_TOKEN_FORMATS[value];
+  }
   if (DATETIME_TOKEN_FORMAT_OPTIONS.some((opt) => opt.value === value)) return value;
   if (
     typeof value === "string" &&

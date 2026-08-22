@@ -26,6 +26,7 @@ import {
   DEFAULT_RANGE_FILENAME_SCHEME,
   DEFAULT_THUMBNAIL_FILENAME_SCHEME,
   DEFAULT_FRAME_FILENAME_SCHEME,
+  FILENAME_DEFAULTS_VERSION,
   DEFAULT_BEST_AVAILABLE_MAX_HEIGHT,
   BEST_AVAILABLE_MAX_HEIGHT_OPTIONS,
   filenameSchemeOptions,
@@ -268,6 +269,24 @@ describe("filename source tokens", () => {
     );
   });
 
+  it("applies datetime increment tokens directly in filename schemes", () => {
+    expect(
+      applyFilenameTemplate("[Title] -- [yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]", {
+        title: "Post",
+        year: "2026",
+        shortYear: "26",
+        month: "08",
+        day: "18",
+        hours: "17",
+        minutes: "49",
+        seconds: "04",
+        milliseconds: "125",
+        timezoneOffset: "-04:00",
+        timezoneOffsetSafe: "-04.00",
+      }),
+    ).toBe("Post -- 2026-08-18T17.49.04.125-04.00");
+  });
+
   it("drops removed time-segment tokens instead of leaving them in filenames", () => {
     expect(
       applyFilenameTemplate(
@@ -411,7 +430,12 @@ describe("WIN_RESERVED", () => {
 
 describe("migrateFilenameSettings", () => {
   it("returns null when storage is already on the modern shape", () => {
-    expect(migrateFilenameSettings({ filenameMode: "title" })).toBeNull();
+    expect(
+      migrateFilenameSettings({
+        filenameMode: "title",
+        filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
+      }),
+    ).toBeNull();
   });
 
   it("collapses split image+gallery keys into the unified key, preferring gallery", () => {
@@ -423,6 +447,7 @@ describe("migrateFilenameSettings", () => {
     expect(out).toEqual({
       filenameMode: "original",
       multipleFilenameMode: "original",
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
       saveMode: "ask",
     });
     expect(out.imageFilenameMode).toBeUndefined();
@@ -433,6 +458,7 @@ describe("migrateFilenameSettings", () => {
     expect(migrateFilenameSettings({ useOriginalFilenames: true })).toEqual({
       filenameMode: "original",
       multipleFilenameMode: "original",
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
     });
   });
 
@@ -440,18 +466,59 @@ describe("migrateFilenameSettings", () => {
     expect(migrateFilenameSettings({ useOriginalFilenames: false })).toEqual({
       filenameMode: "sequential",
       multipleFilenameMode: "sequential",
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
     });
   });
 
   it("seeds filenameMode on a fresh install (empty settings)", () => {
-    expect(migrateFilenameSettings({})).toEqual({ filenameMode: DEFAULT_FILENAME_SCHEME });
+    expect(migrateFilenameSettings({})).toEqual({
+      filenameMode: DEFAULT_FILENAME_SCHEME,
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
+    });
   });
 
   it("migrates the legacy video range filename setting", () => {
     expect(migrateFilenameSettings({ videoRangeFilenameMode: "title" })).toEqual({
       filenameMode: DEFAULT_FILENAME_SCHEME,
       rangeFilenameMode: "title",
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
     });
+  });
+
+  it("migrates old poster-first default values to title-first defaults once", () => {
+    expect(
+      migrateFilenameSettings({
+        filenameMode: "uploader-title-source",
+        multipleFilenameMode: "uploader-title-source-index",
+        rangeFilenameMode: "uploader-title-range-source",
+        thumbnailFilenameMode: "uploader-title-source-thumbnail",
+        frameFilenameMode: "uploader-title-frame-source",
+        folderMode: "uploader-title-source",
+        integratedButtonSettings: {
+          reddit: { behavior: "download", filenameMode: "uploader-title-source" },
+        },
+      }),
+    ).toEqual({
+      filenameMode: DEFAULT_FILENAME_SCHEME,
+      multipleFilenameMode: DEFAULT_MULTIPLE_FILENAME_SCHEME,
+      rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
+      thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+      frameFilenameMode: DEFAULT_FRAME_FILENAME_SCHEME,
+      folderMode: DEFAULT_FILENAME_SCHEME,
+      integratedButtonSettings: {
+        reddit: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+      },
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
+    });
+  });
+
+  it("preserves explicit poster-first choices after default migration", () => {
+    expect(
+      migrateFilenameSettings({
+        filenameMode: "uploader-title-source",
+        filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
+      }),
+    ).toBeNull();
   });
 
   it("preserves unrelated settings keys", () => {

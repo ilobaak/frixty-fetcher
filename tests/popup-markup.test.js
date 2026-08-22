@@ -120,8 +120,8 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('id="add-custom-datetime-format"');
     expect(optionsHtml).toContain('id="custom-datetime-format-error"');
     expect(optionsHtml).toContain("Custom datetime formats can use");
-    expect(optionsHtml).toContain("[yyyy]-[MM]-[dd] [hh].[mm]");
-    expect(optionsHtml).toContain('"2026-08-18 17.49"');
+    expect(optionsHtml).toContain("[yyyy]-[MM]-[dd]T[hh].[mm]");
+    expect(optionsHtml).toContain('"2026-08-18T17.49"');
     expect(optionsHtml).toContain('id="reset-options"');
     expect(optionsHtml).toContain("Reset All Options");
     expect(optionsHtml).toContain("Thumbnail Download");
@@ -133,6 +133,9 @@ describe("popup markup", () => {
     expect(optionsHtml).not.toContain("<code>[Start]</code>");
     expect(optionsHtml).not.toContain("<code>[End]</code>");
     expect(optionsHtml).toContain("[Datetime]");
+    expect(optionsHtml).toContain("[yyyy] [yy] [MM] [dd]");
+    expect(optionsHtml).toContain("[hh] [mm] [ss] [ms]");
+    expect(optionsHtml).toContain("[tz] [tzSafe]");
     expect(optionsHtml).toContain("[Video Start Time]");
     expect(optionsHtml).toContain("[Video End Time]");
     expect(optionsHtml).toContain("[Video Frame Time]");

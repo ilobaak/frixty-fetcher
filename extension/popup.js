@@ -62,6 +62,7 @@ import { friendlyError } from "./popup-errors.js";
 import {
   DEFAULT_DATETIME_TOKEN_FORMAT,
   DEFAULT_TIME_TOKEN_FORMAT,
+  filenameDatetimeParts,
   filenameDatetimeToken,
   formatTimestamp,
   filenameTimeToken,
@@ -1954,6 +1955,7 @@ function filenameBaseFromMode(
   const cleanTitle = String(title || "").replace(/\s+/g, " ").trim();
   const template = filenameTemplateForMode(mode, saveSettings.customFilenameSchemes);
   if (template) {
+    const nowParts = filenameDatetimeParts(new Date()) || {};
     return applyFilenameTemplate(template, {
       title: cleanTitle,
       poster,
@@ -1966,6 +1968,16 @@ function filenameBaseFromMode(
           saveSettings.datetimeTokenFormat,
           saveSettings.customDatetimeTokenFormats,
         ),
+      year: nowParts.year,
+      shortYear: nowParts.shortYear,
+      month: nowParts.month,
+      day: nowParts.day,
+      hours: nowParts.hours,
+      minutes: nowParts.minutes,
+      seconds: nowParts.seconds,
+      milliseconds: nowParts.milliseconds,
+      timezoneOffset: nowParts.timezoneOffset,
+      timezoneOffsetSafe: nowParts.timezoneOffsetSafe,
       videoStartTime,
       videoEndTime,
       videoFrameTime,

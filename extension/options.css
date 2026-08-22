@@ -210,15 +210,24 @@ button:disabled {
 .token-list > div > code:first-child {
   white-space: nowrap;
 }
+.token-list .examples-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(170px, max-content) minmax(0, 1fr);
+  gap: 8px 12px;
+}
 .token-examples {
   display: grid;
   gap: 8px;
 }
 .token-examples div {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) max-content minmax(220px, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 14px;
   align-items: baseline;
+}
+.token-examples code {
+  white-space: normal;
 }
 .token-examples span {
   color: #777;
@@ -227,6 +236,9 @@ button:disabled {
   text-transform: uppercase;
 }
 @media (max-width: 620px) {
+  .token-list .examples-row {
+    grid-template-columns: 1fr;
+  }
   .token-examples div {
     grid-template-columns: 1fr;
     gap: 4px;

@@ -158,6 +158,7 @@ export const DEFAULT_MULTIPLE_FILENAME_SCHEME = "title-uploader-source-index";
 export const DEFAULT_RANGE_FILENAME_SCHEME = "title-uploader-range-source";
 export const DEFAULT_THUMBNAIL_FILENAME_SCHEME = "title-uploader-source-thumbnail";
 export const DEFAULT_FRAME_FILENAME_SCHEME = "title-uploader-frame-source";
+export const FILENAME_DEFAULTS_VERSION = 2;
 export const DEFAULT_BEST_AVAILABLE_MAX_HEIGHT = 0;
 export const BEST_AVAILABLE_MAX_HEIGHT_OPTIONS = [
   { value: 0, label: "No cap" },
@@ -353,6 +354,16 @@ export function applyFilenameTemplate(template, tokens = {}) {
     "[Index]": tokens.index || "",
     "[Datetime]": tokens.datetime || "",
     "[datetime]": tokens.datetime || "",
+    "[yyyy]": tokens.year || tokens.yyyy || "",
+    "[yy]": tokens.shortYear || tokens.yy || "",
+    "[MM]": tokens.month || tokens.MM || "",
+    "[dd]": tokens.day || tokens.dd || "",
+    "[hh]": tokens.hours || tokens.hh || "",
+    "[mm]": tokens.minutes || tokens.mm || "",
+    "[ss]": tokens.seconds || tokens.ss || "",
+    "[ms]": tokens.milliseconds || tokens.ms || "",
+    "[tz]": tokens.timezoneOffset || tokens.tz || "",
+    "[tzSafe]": tokens.timezoneOffsetSafe || tokens.tzSafe || "",
     "[Video Start Time]": tokens.videoStartTime || tokens.startTime || tokens.start || "",
     "[video start time]": tokens.videoStartTime || tokens.startTime || tokens.start || "",
     "[Video End Time]": tokens.videoEndTime || tokens.endTime || tokens.end || "",
@@ -463,6 +474,42 @@ export function resolveBestAvailableMaxHeight(value) {
     : DEFAULT_BEST_AVAILABLE_MAX_HEIGHT;
 }
 
+function migrateOldDefaultFilenameMode(value, replacement) {
+  return value === "uploader-title-source" ? replacement : value;
+}
+
+function migrateOldMultipleFilenameMode(value) {
+  return value === "uploader-title-source-index" ? DEFAULT_MULTIPLE_FILENAME_SCHEME : value;
+}
+
+function migrateOldRangeFilenameMode(value) {
+  return value === "uploader-title-range-source" ? DEFAULT_RANGE_FILENAME_SCHEME : value;
+}
+
+function migrateOldThumbnailFilenameMode(value) {
+  return value === "uploader-title-source-thumbnail" ? DEFAULT_THUMBNAIL_FILENAME_SCHEME : value;
+}
+
+function migrateOldFrameFilenameMode(value) {
+  return value === "uploader-title-frame-source" ? DEFAULT_FRAME_FILENAME_SCHEME : value;
+}
+
+function migrateIntegratedDefaultModes(settings) {
+  if (!settings || typeof settings !== "object") return settings;
+  const out = {};
+  for (const [key, entry] of Object.entries(settings)) {
+    if (!entry || typeof entry !== "object") {
+      out[key] = entry;
+      continue;
+    }
+    out[key] = {
+      ...entry,
+      filenameMode: migrateOldDefaultFilenameMode(entry.filenameMode, DEFAULT_FILENAME_SCHEME),
+    };
+  }
+  return out;
+}
+
 // migrateFilenameSettings collapses legacy filename-mode keys into the
 // single `filenameMode` and drops the obsolete keys + the very-old
 // `useOriginalFilenames` boolean. Returns the new settings object when
@@ -475,7 +522,8 @@ export function migrateFilenameSettings(settings) {
     settings.videoRangeFilenameMode !== undefined ||
     settings.videoThumbnailFilenameMode !== undefined ||
     settings.videoFrameFilenameMode !== undefined ||
-    settings.useOriginalFilenames !== undefined;
+    settings.useOriginalFilenames !== undefined ||
+    settings.filenameDefaultsVersion !== FILENAME_DEFAULTS_VERSION;
   if (!hasLegacy && settings.filenameMode !== undefined) return null;
 
   const next = { ...settings };
@@ -485,18 +533,42 @@ export function migrateFilenameSettings(settings) {
   if (next.filenameMode === undefined) {
     next.filenameMode = resolveFilenameMode(next);
   }
+  if (settings.filenameDefaultsVersion !== FILENAME_DEFAULTS_VERSION) {
+    next.filenameMode = migrateOldDefaultFilenameMode(next.filenameMode, DEFAULT_FILENAME_SCHEME);
+  }
   if (next.multipleFilenameMode === undefined && next.galleryFilenameMode !== undefined) {
     next.multipleFilenameMode = resolveMultipleFilenameMode(next);
+  }
+  if (settings.filenameDefaultsVersion !== FILENAME_DEFAULTS_VERSION) {
+    const migrated = migrateOldMultipleFilenameMode(next.multipleFilenameMode);
+    if (migrated !== undefined) next.multipleFilenameMode = migrated;
   }
   if (next.rangeFilenameMode === undefined && next.videoRangeFilenameMode !== undefined) {
     next.rangeFilenameMode = resolveRangeFilenameMode(next);
   }
+  if (settings.filenameDefaultsVersion !== FILENAME_DEFAULTS_VERSION) {
+    const migrated = migrateOldRangeFilenameMode(next.rangeFilenameMode);
+    if (migrated !== undefined) next.rangeFilenameMode = migrated;
+  }
   if (next.thumbnailFilenameMode === undefined && next.videoThumbnailFilenameMode !== undefined) {
     next.thumbnailFilenameMode = resolveThumbnailFilenameMode(next);
+  }
+  if (settings.filenameDefaultsVersion !== FILENAME_DEFAULTS_VERSION) {
+    const migrated = migrateOldThumbnailFilenameMode(next.thumbnailFilenameMode);
+    if (migrated !== undefined) next.thumbnailFilenameMode = migrated;
   }
   if (next.frameFilenameMode === undefined && next.videoFrameFilenameMode !== undefined) {
     next.frameFilenameMode = resolveFrameFilenameMode(next);
   }
+  if (settings.filenameDefaultsVersion !== FILENAME_DEFAULTS_VERSION) {
+    const migratedFrame = migrateOldFrameFilenameMode(next.frameFilenameMode);
+    if (migratedFrame !== undefined) next.frameFilenameMode = migratedFrame;
+    const migratedFolder = migrateOldDefaultFilenameMode(next.folderMode, DEFAULT_FILENAME_SCHEME);
+    if (migratedFolder !== undefined) next.folderMode = migratedFolder;
+    const migratedIntegrated = migrateIntegratedDefaultModes(next.integratedButtonSettings);
+    if (migratedIntegrated !== undefined) next.integratedButtonSettings = migratedIntegrated;
+  }
+  next.filenameDefaultsVersion = FILENAME_DEFAULTS_VERSION;
   delete next.imageFilenameMode;
   delete next.galleryFilenameMode;
   delete next.videoRangeFilenameMode;

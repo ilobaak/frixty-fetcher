@@ -83,13 +83,18 @@ export const TIME_TOKEN_FORMAT_OPTIONS = [
   { value: "[hh].[mm].[ss]", label: "[hh].[mm].[ss]", example: "01.02.03" },
 ];
 
-export const DEFAULT_DATETIME_TOKEN_FORMAT = "[yyyy].[MM].[dd]-[hh].[mm].[ss]";
+export const DEFAULT_DATETIME_TOKEN_FORMAT = "[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]";
 
 export const DATETIME_TOKEN_FORMAT_OPTIONS = [
   {
-    value: "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
-    label: "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
-    example: "2026.08.18-17.49.04",
+    value: "[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]",
+    label: "[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]",
+    example: "2026-08-18T17.49.04.125-04.00",
+  },
+  {
+    value: "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]",
+    label: "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]",
+    example: "2026-08-18T17:49:04.125-04:00",
   },
   {
     value: "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
@@ -207,6 +212,13 @@ export function filenameDatetimeParts(date = new Date()) {
   const minutes = String(d.getMinutes()).padStart(2, "0");
   const seconds = String(d.getSeconds()).padStart(2, "0");
   const milliseconds = String(d.getMilliseconds()).padStart(3, "0");
+  const offsetMinutes = -d.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? "+" : "-";
+  const offsetAbs = Math.abs(offsetMinutes);
+  const offsetHours = String(Math.floor(offsetAbs / 60)).padStart(2, "0");
+  const offsetMins = String(offsetAbs % 60).padStart(2, "0");
+  const timezoneOffset = `${offsetSign}${offsetHours}:${offsetMins}`;
+  const timezoneOffsetSafe = `${offsetSign}${offsetHours}.${offsetMins}`;
   return {
     year,
     shortYear: year.slice(-2),
@@ -216,11 +228,15 @@ export function filenameDatetimeParts(date = new Date()) {
     minutes,
     seconds,
     milliseconds,
+    timezoneOffset,
+    timezoneOffsetSafe,
   };
 }
 
 function applyDatetimePattern(pattern, parts) {
   return String(pattern || "")
+    .replace(/\[tzSafe\]/g, parts.timezoneOffsetSafe)
+    .replace(/\[tz\]/g, parts.timezoneOffset)
     .replace(/\[ms\]/g, parts.milliseconds)
     .replace(/\[yyyy\]/g, parts.year)
     .replace(/\[yy\]/g, parts.shortYear)
@@ -259,6 +275,9 @@ export function filenameDatetimeToken(
     );
     if (custom) return applyDatetimePattern(custom.pattern, parts);
   }
+  if (format === "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]") {
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hours}:${parts.minutes}:${parts.seconds}.${parts.milliseconds}${parts.timezoneOffset}`;
+  }
   if (
     format === "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]" ||
     format === "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]" ||
@@ -279,7 +298,7 @@ export function filenameDatetimeToken(
   ) {
     return `${parts.year}${parts.month}${parts.day}-${parts.hours}${parts.minutes}${parts.seconds}`;
   }
-  return `${parts.year}.${parts.month}.${parts.day}-${parts.hours}.${parts.minutes}.${parts.seconds}`;
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hours}.${parts.minutes}.${parts.seconds}.${parts.milliseconds}${parts.timezoneOffsetSafe}`;
 }
 
 export function framePreviewKey(url, seconds) {

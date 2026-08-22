@@ -204,16 +204,17 @@
       <input
         id="custom-datetime-format-pattern"
         type="text"
-        placeholder="[yyyy].[MM].[dd]-[hh].[mm].[ss]"
+        placeholder="[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]"
       />
       <button id="add-custom-datetime-format" type="button">Add format</button>
     </div>
     <p id="custom-datetime-format-error" class="section-error" hidden></p>
     <p class="muted" style="margin-top: 4px">
       Custom datetime formats can use <code>[yyyy]</code>, <code>[yy]</code>, <code>[MM]</code>,
-      <code>[dd]</code>, <code>[hh]</code>, <code>[mm]</code>, <code>[ss]</code>, and
-      <code>[ms]</code>. Example: <code>"[yyyy]-[MM]-[dd] [hh].[mm]"</code> becomes
-      <code>"2026-08-18 17.49"</code>.
+      <code>[dd]</code>, <code>[hh]</code>, <code>[mm]</code>, <code>[ss]</code>, <code>[ms]</code>,
+      <code>[tz]</code>, and <code>[tzSafe]</code>. <code>[Datetime]</code> uses your browser's
+      current local date, time, and time zone when the filename is generated. Example:
+      <code>"[yyyy]-[MM]-[dd]T[hh].[mm]"</code> becomes <code>"2026-08-18T17.49"</code>.
     </p>
 
     <h2>Custom filename schemes</h2>
@@ -255,8 +256,30 @@
       <div>
         <code>[Datetime]</code
         ><span
-          >Current local date and time using the selected datetime format. Example:
-          <code>"2026.08.18-17.49.04"</code>.</span
+          >Current local browser date, time, and time zone using the selected datetime format.
+          Example: <code>"2026-08-18T17.49.04.125-04.00"</code>.</span
+        >
+      </div>
+      <div>
+        <code>[yyyy] [yy] [MM] [dd]</code
+        ><span
+          >Current local year, short year, month, and day. Example:
+          <code>"[yyyy]-[MM]-[dd]"</code> becomes <code>"2026-08-18"</code>.</span
+        >
+      </div>
+      <div>
+        <code>[hh] [mm] [ss] [ms]</code
+        ><span
+          >Current local hour, minute, second, and millisecond. Example:
+          <code>"[hh].[mm].[ss].[ms]"</code> becomes <code>"17.49.04.125"</code>.</span
+        >
+      </div>
+      <div>
+        <code>[tz] [tzSafe]</code
+        ><span
+          >Current local UTC offset. <code>[tz]</code> is ISO-style, for example
+          <code>"-04:00"</code>. <code>[tzSafe]</code> avoids filename colons, for example
+          <code>"-04.00"</code>.</span
         >
       </div>
       <div>
@@ -288,13 +311,18 @@
           unavailable, it is left blank.</span
         >
       </div>
-      <div>
+      <div class="examples-row">
         <code>Examples</code>
         <div class="token-examples">
           <div>
             <code>"[Title] -- [@Poster] -- [Source]"</code>
             <span>becomes</span>
             <code>"Midnight Train Review -- @riverclips -- x.com"</code>
+          </div>
+          <div>
+            <code>"[Title] -- [yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]"</code>
+            <span>becomes</span>
+            <code>"Midnight Train Review -- 2026-08-18T17.49.04.125-04.00"</code>
           </div>
           <div>
             <code>"[Title] -- [@Poster] -- [Source] - [Index]"</code>

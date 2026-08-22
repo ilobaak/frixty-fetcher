@@ -111,9 +111,11 @@ describe("timestamp helpers", () => {
       minutes: "49",
       seconds: "04",
       milliseconds: "125",
+      timezoneOffset: "-04:00",
+      timezoneOffsetSafe: "-04.00",
     });
-    expect(DEFAULT_DATETIME_TOKEN_FORMAT).toBe("[yyyy].[MM].[dd]-[hh].[mm].[ss]");
-    expect(filenameDatetimeToken(date)).toBe("2026.08.18-17.49.04");
+    expect(DEFAULT_DATETIME_TOKEN_FORMAT).toBe("[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]");
+    expect(filenameDatetimeToken(date)).toBe("2026-08-18T17.49.04.125-04.00");
   });
 
   it("formats datetime tokens with selected and custom formats", () => {
@@ -128,12 +130,17 @@ describe("timestamp helpers", () => {
     expect(DATETIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain(
       "[yyyy][MM][dd]-[hh][mm][ss]",
     );
+    expect(filenameDatetimeToken(date, "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]")).toBe(
+      "2026-08-18T17:49:04.125-04:00",
+    );
     expect(filenameDatetimeToken(date, "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]")).toBe(
       "2026-08-18-17.49.04",
     );
     expect(filenameDatetimeToken(date, "[yyyy][MM][dd]-[hh][mm][ss]")).toBe("20260818-174904");
     expect(filenameDatetimeToken(date, "custom:readable", custom)).toBe("2026-08-18 17-49-04-125");
-    expect(filenameDatetimeToken(date, "custom:missing", custom)).toBe("2026.08.18-17.49.04");
+    expect(filenameDatetimeToken(date, "custom:missing", custom)).toBe(
+      "2026-08-18T17.49.04.125-04.00",
+    );
   });
 
   it("returns filename time segments for custom tokens", () => {

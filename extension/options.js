@@ -23,6 +23,7 @@ import {
   DEFAULT_MULTIPLE_FILENAME_SCHEME,
   DEFAULT_RANGE_FILENAME_SCHEME,
   DEFAULT_THUMBNAIL_FILENAME_SCHEME,
+  FILENAME_DEFAULTS_VERSION,
   filenameSchemeOptions,
   migrateFilenameSettings,
   normalizeCustomFilenameSchemes,
@@ -101,8 +102,8 @@ const LEGACY_TIME_TOKEN_FORMATS = {
 };
 
 const LEGACY_DATETIME_TOKEN_FORMATS = {
-  "yyyy.mm.dd-hh.mm.ss": "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
-  "[YYYY].[MM].[DD]-[HH].[mm].[SS]": "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
+  "yyyy.mm.dd-hh.mm.ss": "[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]",
+  "[YYYY].[MM].[DD]-[HH].[mm].[SS]": "[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]",
   "yyyy-mm-dd-hh.mm.ss": "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
   "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]": "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
   "yyyy.mm.dd": "[yyyy].[MM].[dd]",
@@ -122,6 +123,7 @@ let current = {
   // The image picker maps "sequential" to "uploader-title" since per-item
   // indexing is meaningless for a 1-of-1 download.
   filenameMode: DEFAULT_FILENAME_SCHEME,
+  filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
   multipleFilenameMode: DEFAULT_MULTIPLE_FILENAME_SCHEME,
   rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
   thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
@@ -152,6 +154,7 @@ function defaultOptionsSettings() {
     specificDestDir: "",
     lastDir: "",
     filenameMode: DEFAULT_FILENAME_SCHEME,
+    filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
     multipleFilenameMode: DEFAULT_MULTIPLE_FILENAME_SCHEME,
     rangeFilenameMode: DEFAULT_RANGE_FILENAME_SCHEME,
     thumbnailFilenameMode: DEFAULT_THUMBNAIL_FILENAME_SCHEME,
@@ -406,6 +409,7 @@ async function save() {
       saveMode: current.saveMode,
       specificDestDir: current.specificDestDir,
       filenameMode: current.filenameMode,
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
       multipleFilenameMode: current.multipleFilenameMode,
       rangeFilenameMode: current.rangeFilenameMode,
       thumbnailFilenameMode: current.thumbnailFilenameMode,

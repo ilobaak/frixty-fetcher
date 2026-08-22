@@ -10,6 +10,7 @@ import {
   DEFAULT_FILENAME_SCHEME,
   applyFilenameTemplate,
   filenameTemplateForMode,
+  migrateFilenameSettings,
   normalizeCustomFilenameSchemes,
   normalizeHandle,
   sourceTokenFromUrl,
@@ -19,6 +20,7 @@ import {
 } from "./shared.js";
 import {
   DEFAULT_DATETIME_TOKEN_FORMAT,
+  filenameDatetimeParts,
   filenameDatetimeToken,
   normalizeCustomDatetimeTokenFormats,
 } from "./popup-helpers.js";
@@ -305,16 +307,19 @@ function defaultIntegratedSettings() {
 
 async function readIntegratedSetting(url) {
   const { settings = {} } = await chrome.storage.local.get("settings");
-  const all = { ...defaultIntegratedSettings(), ...(settings.integratedButtonSettings || {}) };
+  const migrated = migrateFilenameSettings(settings);
+  if (migrated) {
+    await chrome.storage.local.set({ settings: migrated });
+  }
+  const s = migrated ?? settings;
+  const all = { ...defaultIntegratedSettings(), ...(s.integratedButtonSettings || {}) };
   const category = integratedCategoryForUrl(url);
   return {
     category,
-    customFilenameSchemes: normalizeCustomFilenameSchemes(settings.customFilenameSchemes),
-    customDatetimeTokenFormats: normalizeCustomDatetimeTokenFormats(
-      settings.customDatetimeTokenFormats,
-    ),
-    datetimeTokenFormat: settings.datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT,
-    bestAvailableMaxHeight: resolveBestAvailableMaxHeight(settings.bestAvailableMaxHeight),
+    customFilenameSchemes: normalizeCustomFilenameSchemes(s.customFilenameSchemes),
+    customDatetimeTokenFormats: normalizeCustomDatetimeTokenFormats(s.customDatetimeTokenFormats),
+    datetimeTokenFormat: s.datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT,
+    bestAvailableMaxHeight: resolveBestAvailableMaxHeight(s.bestAvailableMaxHeight),
     ...all[category],
   };
 }
@@ -352,6 +357,7 @@ function concreteFilenameBase({
   const template = filenameTemplateForMode(mode || DEFAULT_FILENAME_SCHEME, customFilenameSchemes);
   const handle = normalizeHandle(poster || "");
   if (template) {
+    const nowParts = filenameDatetimeParts(new Date()) || {};
     return applyFilenameTemplate(template, {
       title: title || "",
       poster: handle,
@@ -362,6 +368,16 @@ function concreteFilenameBase({
         datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT,
         customDatetimeTokenFormats,
       ),
+      year: nowParts.year,
+      shortYear: nowParts.shortYear,
+      month: nowParts.month,
+      day: nowParts.day,
+      hours: nowParts.hours,
+      minutes: nowParts.minutes,
+      seconds: nowParts.seconds,
+      milliseconds: nowParts.milliseconds,
+      timezoneOffset: nowParts.timezoneOffset,
+      timezoneOffsetSafe: nowParts.timezoneOffsetSafe,
     });
   }
   if (mode === "title-uploader" && handle) return `${title || ""} -- ${handle}`.trim();

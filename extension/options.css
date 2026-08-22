@@ -194,7 +194,7 @@ button:disabled {
 }
 .token-list {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
+  grid-template-columns: minmax(170px, max-content) minmax(0, 1fr);
   gap: 8px 12px;
   margin-top: 8px;
   color: #555;
@@ -204,8 +204,33 @@ button:disabled {
   display: contents;
 }
 .token-list code {
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   color: #333;
+}
+.token-list > div > code:first-child {
+  white-space: nowrap;
+}
+.token-examples {
+  display: grid;
+  gap: 8px;
+}
+.token-examples div {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) max-content minmax(220px, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+.token-examples span {
+  color: #777;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+@media (max-width: 620px) {
+  .token-examples div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
 .row {
   display: flex;

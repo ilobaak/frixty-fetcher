@@ -61,46 +61,46 @@ export function frameTimestampFilenameSuffix(seconds) {
   return formatTimestamp(seconds).replace(/:/g, "-");
 }
 
-export const DEFAULT_TIME_TOKEN_FORMAT = "[HH].[MM].[SS].[milliseconds]";
+export const DEFAULT_TIME_TOKEN_FORMAT = "[hh].[mm].[ss].[ms]";
 
 export const TIME_TOKEN_FORMAT_OPTIONS = [
   {
-    value: "[HH].[MM].[SS].[milliseconds]",
-    label: "[HH].[MM].[SS].[milliseconds]",
+    value: "[hh].[mm].[ss].[ms]",
+    label: "[hh].[mm].[ss].[ms]",
     example: "01.02.03.250",
   },
   {
-    value: "[HH]-[MM]-[SS]-[milliseconds]",
-    label: "[HH]-[MM]-[SS]-[milliseconds]",
+    value: "[hh]-[mm]-[ss]-[ms]",
+    label: "[hh]-[mm]-[ss]-[ms]",
     example: "01-02-03-250",
   },
   {
-    value: "[HH]:[MM]:[SS].[milliseconds]",
-    label: "[HH]:[MM]:[SS].[milliseconds]",
+    value: "[hh]:[mm]:[ss].[ms]",
+    label: "[hh]:[mm]:[ss].[ms]",
     example: "01:02:03.250",
   },
-  { value: '[HH]:[MM]"[SS]', label: '[HH]:[MM]"[SS]', example: '01:02"03' },
-  { value: "[HH].[MM].[SS]", label: "[HH].[MM].[SS]", example: "01.02.03" },
+  { value: '[hh]:[mm]"[ss]', label: '[hh]:[mm]"[ss]', example: '01:02"03' },
+  { value: "[hh].[mm].[ss]", label: "[hh].[mm].[ss]", example: "01.02.03" },
 ];
 
-export const DEFAULT_DATETIME_TOKEN_FORMAT = "[YYYY].[MM].[DD]-[HH].[mm].[SS]";
+export const DEFAULT_DATETIME_TOKEN_FORMAT = "[yyyy].[MM].[dd]-[hh].[mm].[ss]";
 
 export const DATETIME_TOKEN_FORMAT_OPTIONS = [
   {
-    value: "[YYYY].[MM].[DD]-[HH].[mm].[SS]",
-    label: "[YYYY].[MM].[DD]-[HH].[mm].[SS]",
+    value: "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
+    label: "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
     example: "2026.08.18-17.49.04",
   },
   {
-    value: "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]",
-    label: "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]",
+    value: "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
+    label: "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
     example: "2026-08-18-17.49.04",
   },
-  { value: "[YYYY].[MM].[DD]", label: "[YYYY].[MM].[DD]", example: "2026.08.18" },
-  { value: "[YYYY]-[MM]-[DD]", label: "[YYYY]-[MM]-[DD]", example: "2026-08-18" },
+  { value: "[yyyy].[MM].[dd]", label: "[yyyy].[MM].[dd]", example: "2026.08.18" },
+  { value: "[yyyy]-[MM]-[dd]", label: "[yyyy]-[MM]-[dd]", example: "2026-08-18" },
   {
-    value: "[YYYY][MM][DD]-[HH][mm][SS]",
-    label: "[YYYY][MM][DD]-[HH][mm][SS]",
+    value: "[yyyy][MM][dd]-[hh][mm][ss]",
+    label: "[yyyy][MM][dd]-[hh][mm][ss]",
     example: "20260818-174904",
   },
 ];
@@ -160,6 +160,10 @@ export function filenameTimeToken(seconds, format = DEFAULT_TIME_TOKEN_FORMAT, c
     const custom = normalizeCustomTimeTokenFormats(customFormats).find((entry) => entry.id === id);
     if (custom) {
       return custom.pattern
+        .replace(/\[ms\]/g, milliseconds)
+        .replace(/\[hh\]/g, hours)
+        .replace(/\[mm\]/g, minutes)
+        .replace(/\[ss\]/g, secs)
         .replace(/\[milliseconds\]/g, milliseconds)
         .replace(/\[HH\]/g, hours)
         .replace(/\[MM\]/g, minutes)
@@ -170,14 +174,26 @@ export function filenameTimeToken(seconds, format = DEFAULT_TIME_TOKEN_FORMAT, c
         .replace(/SS/g, secs);
     }
   }
-  if (format === "[HH]-[MM]-[SS]-[milliseconds]" || format === "hh-mm-ss-mmm") {
+  if (
+    format === "[hh]-[mm]-[ss]-[ms]" ||
+    format === "[HH]-[MM]-[SS]-[milliseconds]" ||
+    format === "hh-mm-ss-mmm"
+  ) {
     return `${hours}-${minutes}-${secs}-${milliseconds}`;
   }
-  if (format === "[HH]:[MM]:[SS].[milliseconds]" || format === "hh:mm:ss.mmm") {
+  if (
+    format === "[hh]:[mm]:[ss].[ms]" ||
+    format === "[HH]:[MM]:[SS].[milliseconds]" ||
+    format === "hh:mm:ss.mmm"
+  ) {
     return `${hours}:${minutes}:${secs}.${milliseconds}`;
   }
-  if (format === '[HH]:[MM]"[SS]' || format === 'hh:mm"ss') return `${hours}:${minutes}"${secs}`;
-  if (format === "[HH].[MM].[SS]" || format === "hh.mm.ss") return `${hours}.${minutes}.${secs}`;
+  if (format === '[hh]:[mm]"[ss]' || format === '[HH]:[MM]"[SS]' || format === 'hh:mm"ss') {
+    return `${hours}:${minutes}"${secs}`;
+  }
+  if (format === "[hh].[mm].[ss]" || format === "[HH].[MM].[SS]" || format === "hh.mm.ss") {
+    return `${hours}.${minutes}.${secs}`;
+  }
   return `${hours}.${minutes}.${secs}.${milliseconds}`;
 }
 
@@ -205,6 +221,12 @@ export function filenameDatetimeParts(date = new Date()) {
 
 function applyDatetimePattern(pattern, parts) {
   return String(pattern || "")
+    .replace(/\[ms\]/g, parts.milliseconds)
+    .replace(/\[yyyy\]/g, parts.year)
+    .replace(/\[yy\]/g, parts.shortYear)
+    .replace(/\[dd\]/g, parts.day)
+    .replace(/\[hh\]/g, parts.hours)
+    .replace(/\[ss\]/g, parts.seconds)
     .replace(/\[milliseconds\]/g, parts.milliseconds)
     .replace(/\[YYYY\]/g, parts.year)
     .replace(/\[YY\]/g, parts.shortYear)
@@ -237,16 +259,24 @@ export function filenameDatetimeToken(
     );
     if (custom) return applyDatetimePattern(custom.pattern, parts);
   }
-  if (format === "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]" || format === "yyyy-mm-dd-hh.mm.ss") {
+  if (
+    format === "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]" ||
+    format === "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]" ||
+    format === "yyyy-mm-dd-hh.mm.ss"
+  ) {
     return `${parts.year}-${parts.month}-${parts.day}-${parts.hours}.${parts.minutes}.${parts.seconds}`;
   }
-  if (format === "[YYYY].[MM].[DD]" || format === "yyyy.mm.dd") {
+  if (format === "[yyyy].[MM].[dd]" || format === "[YYYY].[MM].[DD]" || format === "yyyy.mm.dd") {
     return `${parts.year}.${parts.month}.${parts.day}`;
   }
-  if (format === "[YYYY]-[MM]-[DD]" || format === "yyyy-mm-dd") {
+  if (format === "[yyyy]-[MM]-[dd]" || format === "[YYYY]-[MM]-[DD]" || format === "yyyy-mm-dd") {
     return `${parts.year}-${parts.month}-${parts.day}`;
   }
-  if (format === "[YYYY][MM][DD]-[HH][mm][SS]" || format === "yyyymmdd-hhmmss") {
+  if (
+    format === "[yyyy][MM][dd]-[hh][mm][ss]" ||
+    format === "[YYYY][MM][DD]-[HH][mm][SS]" ||
+    format === "yyyymmdd-hhmmss"
+  ) {
     return `${parts.year}${parts.month}${parts.day}-${parts.hours}${parts.minutes}${parts.seconds}`;
   }
   return `${parts.year}.${parts.month}.${parts.day}-${parts.hours}.${parts.minutes}.${parts.seconds}`;

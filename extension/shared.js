@@ -153,11 +153,11 @@ export function pickHandleText(uploaderId, uploader) {
   return normalizeHandle(uploader);
 }
 
-export const DEFAULT_FILENAME_SCHEME = "uploader-title-source";
-export const DEFAULT_MULTIPLE_FILENAME_SCHEME = "uploader-title-source-index";
-export const DEFAULT_RANGE_FILENAME_SCHEME = "uploader-title-range-source";
-export const DEFAULT_THUMBNAIL_FILENAME_SCHEME = "uploader-title-source-thumbnail";
-export const DEFAULT_FRAME_FILENAME_SCHEME = "uploader-title-frame-source";
+export const DEFAULT_FILENAME_SCHEME = "title-uploader-source";
+export const DEFAULT_MULTIPLE_FILENAME_SCHEME = "title-uploader-source-index";
+export const DEFAULT_RANGE_FILENAME_SCHEME = "title-uploader-range-source";
+export const DEFAULT_THUMBNAIL_FILENAME_SCHEME = "title-uploader-source-thumbnail";
+export const DEFAULT_FRAME_FILENAME_SCHEME = "title-uploader-frame-source";
 export const DEFAULT_BEST_AVAILABLE_MAX_HEIGHT = 0;
 export const BEST_AVAILABLE_MAX_HEIGHT_OPTIONS = [
   { value: 0, label: "No cap" },
@@ -170,6 +170,36 @@ export const BEST_AVAILABLE_MAX_HEIGHT_OPTIONS = [
 ];
 
 export const BUILTIN_FILENAME_SCHEMES = [
+  {
+    value: "title-uploader-source",
+    label: "[Title] -- [@Poster] -- [Source]",
+    template: "[Title] -- [@Poster] -- [Source]",
+    galleryIndex: true,
+  },
+  {
+    value: "title-uploader-source-index",
+    label: "[Title] -- [@Poster] -- [Source] - [Index]",
+    template: "[Title] -- [@Poster] -- [Source] - [Index]",
+    galleryOnly: true,
+  },
+  {
+    value: "title-uploader-range-source",
+    label: "[Title] -- [@Poster] -- S([Video Start Time]) -- E([Video End Time]) -- [Source]",
+    template: "[Title] -- [@Poster] -- S([Video Start Time]) -- E([Video End Time]) -- [Source]",
+    rangeOnly: true,
+  },
+  {
+    value: "title-uploader-source-thumbnail",
+    label: "[Title] -- [@Poster] -- [Source] -- thumbnail",
+    template: "[Title] -- [@Poster] -- [Source] -- thumbnail",
+    videoImageOnly: true,
+  },
+  {
+    value: "title-uploader-frame-source",
+    label: "[Title] -- [@Poster] -- FRAME([Video Frame Time]) -- [Source]",
+    template: "[Title] -- [@Poster] -- FRAME([Video Frame Time]) -- [Source]",
+    videoImageOnly: true,
+  },
   {
     value: "uploader-title-source",
     label: "[@Poster] -- [Title] -- [Source]",
@@ -199,12 +229,6 @@ export const BUILTIN_FILENAME_SCHEMES = [
     label: "[@Poster] -- [Title] -- FRAME([Video Frame Time]) -- [Source]",
     template: "[@Poster] -- [Title] -- FRAME([Video Frame Time]) -- [Source]",
     videoImageOnly: true,
-  },
-  {
-    value: "title-uploader-source",
-    label: "[Title] -- [@Poster] -- [Source]",
-    template: "[Title] -- [@Poster] -- [Source]",
-    galleryIndex: true,
   },
   {
     value: "title-uploader",
@@ -403,19 +427,18 @@ export function isKnownHost(url) {
 export function resolveFilenameMode(s) {
   const raw =
     s.filenameMode ?? s.galleryFilenameMode ?? s.imageFilenameMode ?? DEFAULT_FILENAME_SCHEME;
-  return raw === "default" || raw === "uploader-title-source" ? DEFAULT_FILENAME_SCHEME : raw;
+  return raw === "default" ? DEFAULT_FILENAME_SCHEME : raw;
 }
 
 export function resolveMultipleFilenameMode(s) {
   const raw = s.multipleFilenameMode ?? s.galleryFilenameMode;
   if (raw === "default" || raw === undefined) return DEFAULT_MULTIPLE_FILENAME_SCHEME;
-  if (raw === "uploader-title-source") return DEFAULT_MULTIPLE_FILENAME_SCHEME;
   return raw;
 }
 
 export function resolveRangeFilenameMode(s) {
   const raw = s.rangeFilenameMode ?? s.videoRangeFilenameMode;
-  if (raw === "default" || raw === "uploader-title-source" || raw === undefined) {
+  if (raw === "default" || raw === undefined) {
     return DEFAULT_RANGE_FILENAME_SCHEME;
   }
   return raw;
@@ -461,16 +484,12 @@ export function migrateFilenameSettings(settings) {
   }
   if (next.filenameMode === undefined) {
     next.filenameMode = resolveFilenameMode(next);
-  } else if (next.filenameMode === "uploader-title-source") {
-    next.filenameMode = DEFAULT_FILENAME_SCHEME;
   }
   if (next.multipleFilenameMode === undefined && next.galleryFilenameMode !== undefined) {
     next.multipleFilenameMode = resolveMultipleFilenameMode(next);
   }
   if (next.rangeFilenameMode === undefined && next.videoRangeFilenameMode !== undefined) {
     next.rangeFilenameMode = resolveRangeFilenameMode(next);
-  } else if (next.rangeFilenameMode === "uploader-title-source") {
-    next.rangeFilenameMode = DEFAULT_RANGE_FILENAME_SCHEME;
   }
   if (next.thumbnailFilenameMode === undefined && next.videoThumbnailFilenameMode !== undefined) {
     next.thumbnailFilenameMode = resolveThumbnailFilenameMode(next);

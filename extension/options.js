@@ -88,19 +88,29 @@ const INTEGRATED_CATEGORIES = [
 ];
 
 const LEGACY_TIME_TOKEN_FORMATS = {
-  "hh.mm.ss.mmm": "[HH].[MM].[SS].[milliseconds]",
-  "hh-mm-ss-mmm": "[HH]-[MM]-[SS]-[milliseconds]",
-  "hh:mm:ss.mmm": "[HH]:[MM]:[SS].[milliseconds]",
-  'hh:mm"ss': '[HH]:[MM]"[SS]',
-  "hh.mm.ss": "[HH].[MM].[SS]",
+  "hh.mm.ss.mmm": "[hh].[mm].[ss].[ms]",
+  "[HH].[MM].[SS].[milliseconds]": "[hh].[mm].[ss].[ms]",
+  "hh-mm-ss-mmm": "[hh]-[mm]-[ss]-[ms]",
+  "[HH]-[MM]-[SS]-[milliseconds]": "[hh]-[mm]-[ss]-[ms]",
+  "hh:mm:ss.mmm": "[hh]:[mm]:[ss].[ms]",
+  "[HH]:[MM]:[SS].[milliseconds]": "[hh]:[mm]:[ss].[ms]",
+  'hh:mm"ss': '[hh]:[mm]"[ss]',
+  '[HH]:[MM]"[SS]': '[hh]:[mm]"[ss]',
+  "hh.mm.ss": "[hh].[mm].[ss]",
+  "[HH].[MM].[SS]": "[hh].[mm].[ss]",
 };
 
 const LEGACY_DATETIME_TOKEN_FORMATS = {
-  "yyyy.mm.dd-hh.mm.ss": "[YYYY].[MM].[DD]-[HH].[mm].[SS]",
-  "yyyy-mm-dd-hh.mm.ss": "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]",
-  "yyyy.mm.dd": "[YYYY].[MM].[DD]",
-  "yyyy-mm-dd": "[YYYY]-[MM]-[DD]",
-  "yyyymmdd-hhmmss": "[YYYY][MM][DD]-[HH][mm][SS]",
+  "yyyy.mm.dd-hh.mm.ss": "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
+  "[YYYY].[MM].[DD]-[HH].[mm].[SS]": "[yyyy].[MM].[dd]-[hh].[mm].[ss]",
+  "yyyy-mm-dd-hh.mm.ss": "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
+  "[YYYY]-[MM]-[DD]-[HH].[mm].[SS]": "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
+  "yyyy.mm.dd": "[yyyy].[MM].[dd]",
+  "[YYYY].[MM].[DD]": "[yyyy].[MM].[dd]",
+  "yyyy-mm-dd": "[yyyy]-[MM]-[dd]",
+  "[YYYY]-[MM]-[DD]": "[yyyy]-[MM]-[dd]",
+  "yyyymmdd-hhmmss": "[yyyy][MM][dd]-[hh][mm][ss]",
+  "[YYYY][MM][DD]-[HH][mm][SS]": "[yyyy][MM][dd]-[hh][mm][ss]",
 };
 
 let current = {

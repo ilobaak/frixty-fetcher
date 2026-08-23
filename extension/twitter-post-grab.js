@@ -76,12 +76,6 @@
       return m ? m[1].toLowerCase() : "";
     } catch { return ""; }
   }
-  function basenameFromUrl(url) {
-    try {
-      const path = new URL(url).pathname;
-      return path.split("/").pop() || "";
-    } catch { return ""; }
-  }
   async function fetchSyndicationMedia(tweetUrl) {
     const m = tweetUrl.match(/\/status\/(\d+)/);
     if (!m) return null;
@@ -255,33 +249,6 @@
     return "";
   }
 
-  function extractThumbnail(tweet) {
-    // Content image from the OUTER tweet only — quoted-tweet media
-    // would misattribute. Prefer imgs inside [data-testid="tweetPhoto"]
-    // since that's Twitter's canonical photo wrapper; fall back to
-    // any recognizable content-CDN img, then to <video>.poster.
-    const photoContainers = tweet.querySelectorAll('[data-testid="tweetPhoto"]');
-    for (const container of photoContainers) {
-      if (isInsideQuote(container, tweet)) continue;
-      const img = container.querySelector("img");
-      const src = img?.currentSrc || img?.src || "";
-      if (src) return src;
-    }
-    for (const img of tweet.querySelectorAll("img")) {
-      if (isInsideQuote(img, tweet)) continue;
-      const src = img.currentSrc || img.src || "";
-      if (!src) continue;
-      if (/pbs\.twimg\.com\/(media|tweet_video_thumb|amplify_video_thumb|ext_tw_video_thumb|card_img)\//.test(src)) {
-        return src;
-      }
-    }
-    for (const v of tweet.querySelectorAll("video")) {
-      if (isInsideQuote(v, tweet)) continue;
-      if (v.poster) return v.poster;
-    }
-    return "";
-  }
-
   // Full text for text-only captures (no truncation). The outer
   // tweet's body is under [data-testid="tweetText"]; quoted tweets
   // have their own, which we skip.
@@ -373,14 +340,6 @@
       }
     }
     return "";
-  }
-
-  // Does the OUTER tweet carry any downloadable media? Union of
-  // photos + videos + the /photo|video/ URL shortcut.
-  function tweetHasMedia(tweet) {
-    if (/\/status\/\d+\/(photo|video)\/\d+/.test(location.pathname)) return true;
-    if (tweetHasVideo(tweet)) return true;
-    return extractPhotoUrls(tweet).length > 0;
   }
 
   // ---- button ----

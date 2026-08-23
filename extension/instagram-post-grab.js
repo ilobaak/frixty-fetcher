@@ -71,10 +71,6 @@
     return "";
   }
 
-  function isStoryViewer() {
-    return location.pathname.startsWith("/stories/");
-  }
-
   // ---- button construction ----------------------------------------
   // Flash is the shared per-button (WeakMap-tracked) helper. CSS at
   // .ytdlp-ig-grab.is-captured / .is-error swaps the background to
@@ -292,16 +288,6 @@
         return svg.closest('button, [role="button"], div[role="button"]') || svg.parentElement;
       }
     }
-    return null;
-  }
-
-  // The Like button on reel viewers is the first SVG with
-  // aria-label="Like" inside the reel's vertical action column.
-  function findReelLike(root) {
-    const svg =
-      root.querySelector('svg[aria-label="Like"]') ||
-      root.querySelector('svg[aria-label="Unlike"]');
-    if (svg) return svg.closest('button, [role="button"], div[role="button"]') || svg.parentElement;
     return null;
   }
 

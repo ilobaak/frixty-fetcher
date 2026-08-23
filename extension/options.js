@@ -114,7 +114,7 @@ const LEGACY_DATETIME_TOKEN_FORMATS = {
   "[YYYY][MM][DD]-[HH][mm][SS]": "[yyyy][MM][dd]-[hh][mm][ss]",
 };
 
-let current = {
+const current = {
   saveMode: DEFAULT_MODE,
   specificDestDir: "",
   lastDir: "",

@@ -558,10 +558,6 @@
     if (p === "/photo.php") return true;
     return false;
   }
-  // Backwards-compat alias so the position function below doesn't
-  // change shape unnecessarily.
-  const isReelsContext = isMediaViewerContext;
-
   // Reset state — clear any flash classes; the SVG icon stays visible.
   function setBtnState() {
     floatingBtn.classList.remove("is-captured");
@@ -1081,7 +1077,6 @@
     let mpBiggestSrc = "";
     let mpTotalImgs = 0;
     let mpFbcdnImgs = 0;
-    let mpAncestorRects = [];
     // Navigated off the listing? Clear the pinned hero so the button
     // doesn't stay pointing at stale DOM after the modal closes.
     if (!onMarketplaceItem && marketplaceHeroEl) {
@@ -1168,7 +1163,6 @@
       const scanSummary = [
         location.pathname, mpTotalImgs, mpFbcdnImgs, mpCandidates,
         mpRegistered, relatedRails.size, mpHeroRect.w, mpHeroRect.h,
-        mpAncestorRects.join(","),
       ].join("|");
       if (scanSummary !== lastMpScanSummary) {
         lastMpScanSummary = scanSummary;
@@ -1181,7 +1175,6 @@
           rails: relatedRails.size,
           heroW: mpHeroRect.w,
           heroH: mpHeroRect.h,
-          ancestors: mpAncestorRects.join(","),
           src: mpBiggestSrc,
         };
         console.log("[frixty/post-grab] marketplace scan", payload);

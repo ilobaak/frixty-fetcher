@@ -156,13 +156,16 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain('"[Title] -- [@Poster] -- [Source]"');
     expect(optionsHtml).toContain('"[Title] -- [@Poster] -- [Source] - [Index]"');
     expect(optionsHtml).toContain('"Midnight Train Review"');
+    expect(optionsHtml).toContain("tokens that contain a video timestamp");
+    expect(optionsHtml).toContain("Example");
+    expect(optionsHtml).toContain("Becomes");
     expect(optionsHtml.indexOf("<h2>Integrated download buttons</h2>")).toBeLessThan(
-      optionsHtml.indexOf("<h2>Time token format</h2>"),
-    );
-    expect(optionsHtml.indexOf("<h2>Time token format</h2>")).toBeLessThan(
       optionsHtml.indexOf("<h2>Datetime token format</h2>"),
     );
     expect(optionsHtml.indexOf("<h2>Datetime token format</h2>")).toBeLessThan(
+      optionsHtml.indexOf("<h2>Time token format</h2>"),
+    );
+    expect(optionsHtml.indexOf("<h2>Time token format</h2>")).toBeLessThan(
       optionsHtml.indexOf("<h2>Custom filename schemes</h2>"),
     );
   });

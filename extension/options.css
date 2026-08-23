@@ -221,27 +221,30 @@ button:disabled {
   gap: 8px;
 }
 .token-examples div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
-  gap: 14px;
-  align-items: baseline;
+  display: block;
+  min-width: 0;
+  padding: 8px 0;
+  border-top: 1px solid #e7e7e7;
 }
 .token-examples code {
+  display: block;
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 .token-examples span {
+  display: block;
   color: #777;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
+  margin: 0 0 3px;
+}
+.token-examples code + span {
+  margin-top: 7px;
 }
 @media (max-width: 620px) {
   .token-list .examples-row {
     grid-template-columns: 1fr;
-  }
-  .token-examples div {
-    grid-template-columns: 1fr;
-    gap: 4px;
   }
 }
 .row {

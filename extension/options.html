@@ -176,23 +176,6 @@
     <h2>Integrated download buttons</h2>
     <div id="integrated-categories"></div>
 
-    <h2>Time token format</h2>
-    <label class="card-control">
-      <span>Format</span>
-      <select id="time-token-format"></select>
-    </label>
-    <div id="custom-time-formats"></div>
-    <div class="specific-body custom-format-form" aria-disabled="false" style="margin-left: 0">
-      <input id="custom-time-format-name" type="text" placeholder="Format name" />
-      <input id="custom-time-format-pattern" type="text" placeholder="[hh].[mm].[ss].[ms]" />
-      <button id="add-custom-time-format" type="button">Add format</button>
-    </div>
-    <p id="custom-time-format-error" class="section-error" hidden></p>
-    <p class="muted" style="margin-top: 4px">
-      Custom time formats can use <code>[hh]</code>, <code>[mm]</code>, <code>[ss]</code>, and
-      <code>[ms]</code>. Example: <code>"[hh]-[mm]-[ss]"</code> becomes <code>"01-02-03"</code>.
-    </p>
-
     <h2>Datetime token format</h2>
     <label class="card-control">
       <span>Format</span>
@@ -215,6 +198,26 @@
       <code>[tz]</code>, and <code>[tzSafe]</code>. <code>[Datetime]</code> uses your browser's
       current local date, time, and time zone when the filename is generated. Example:
       <code>"[yyyy]-[MM]-[dd]T[hh].[mm]"</code> becomes <code>"2026-08-18T17.49"</code>.
+    </p>
+
+    <h2>Time token format</h2>
+    <label class="card-control">
+      <span>Format</span>
+      <select id="time-token-format"></select>
+    </label>
+    <div id="custom-time-formats"></div>
+    <div class="specific-body custom-format-form" aria-disabled="false" style="margin-left: 0">
+      <input id="custom-time-format-name" type="text" placeholder="Format name" />
+      <input id="custom-time-format-pattern" type="text" placeholder="[hh].[mm].[ss].[ms]" />
+      <button id="add-custom-time-format" type="button">Add format</button>
+    </div>
+    <p id="custom-time-format-error" class="section-error" hidden></p>
+    <p class="muted" style="margin-top: 4px">
+      Custom time formats can use <code>[hh]</code>, <code>[mm]</code>, <code>[ss]</code>, and
+      <code>[ms]</code>. This format is used by filename tokens that contain a video timestamp, such
+      as <code>[Video Start Time]</code>, <code>[Video End Time]</code>, and
+      <code>[Video Frame Time]</code>. Example: <code>"[hh]-[mm]-[ss]"</code> becomes
+      <code>"01-02-03"</code>.
     </p>
 
     <h2>Custom filename schemes</h2>
@@ -315,26 +318,30 @@
         <code>Examples</code>
         <div class="token-examples">
           <div>
+            <span>Example</span>
             <code>"[Title] -- [@Poster] -- [Source]"</code>
-            <span>becomes</span>
+            <span>Becomes</span>
             <code>"Midnight Train Review -- @riverclips -- x.com"</code>
           </div>
           <div>
+            <span>Example</span>
             <code>"[Title] -- [yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tzSafe]"</code>
-            <span>becomes</span>
+            <span>Becomes</span>
             <code>"Midnight Train Review -- 2026-08-18T17.49.04.125-04.00"</code>
           </div>
           <div>
+            <span>Example</span>
             <code>"[Title] -- [@Poster] -- [Source] - [Index]"</code>
-            <span>becomes</span>
+            <span>Becomes</span>
             <code>"Midnight Train Review -- @riverclips -- reddit - 01"</code>
           </div>
           <div>
+            <span>Example</span>
             <code
               >"[Title] -- [@Poster] -- S([Video Start Time]) -- E([Video End Time]) --
               [Source]"</code
             >
-            <span>becomes</span>
+            <span>Becomes</span>
             <code
               >"Rainy Trail Highlights -- @trailcam -- S(00.00.10.000) -- E(00.00.45.000) --
               youtube"</code

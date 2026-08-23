@@ -92,11 +92,6 @@ export const DATETIME_TOKEN_FORMAT_OPTIONS = [
     example: "2026-08-18T17.49.04.125-04.00",
   },
   {
-    value: "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]",
-    label: "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]",
-    example: "2026-08-18T17:49:04.125-04:00",
-  },
-  {
     value: "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
     label: "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]",
     example: "2026-08-18-17.49.04",
@@ -236,7 +231,6 @@ export function filenameDatetimeParts(date = new Date()) {
 function applyDatetimePattern(pattern, parts) {
   return String(pattern || "")
     .replace(/\[tzSafe\]/g, parts.timezoneOffsetSafe)
-    .replace(/\[tz\]/g, parts.timezoneOffset)
     .replace(/\[ms\]/g, parts.milliseconds)
     .replace(/\[yyyy\]/g, parts.year)
     .replace(/\[yy\]/g, parts.shortYear)
@@ -258,7 +252,8 @@ function applyDatetimePattern(pattern, parts) {
     .replace(/HH/g, parts.hours)
     .replace(/SS/g, parts.seconds)
     .replace(/MM/g, parts.month)
-    .replace(/mm/g, parts.minutes);
+    .replace(/mm/g, parts.minutes)
+    .replace(/\[[^\]]+\]/g, "");
 }
 
 export function filenameDatetimeToken(
@@ -274,9 +269,6 @@ export function filenameDatetimeToken(
       (entry) => entry.id === id,
     );
     if (custom) return applyDatetimePattern(custom.pattern, parts);
-  }
-  if (format === "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]") {
-    return `${parts.year}-${parts.month}-${parts.day}T${parts.hours}:${parts.minutes}:${parts.seconds}.${parts.milliseconds}${parts.timezoneOffset}`;
   }
   if (
     format === "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]" ||

@@ -362,7 +362,6 @@ export function applyFilenameTemplate(template, tokens = {}) {
     "[mm]": tokens.minutes || tokens.mm || "",
     "[ss]": tokens.seconds || tokens.ss || "",
     "[ms]": tokens.milliseconds || tokens.ms || "",
-    "[tz]": tokens.timezoneOffset || tokens.tz || "",
     "[tzSafe]": tokens.timezoneOffsetSafe || tokens.tzSafe || "",
     "[Video Start Time]": tokens.videoStartTime || tokens.startTime || tokens.start || "",
     "[video start time]": tokens.videoStartTime || tokens.startTime || tokens.start || "",

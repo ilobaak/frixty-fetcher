@@ -135,7 +135,9 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain("[Datetime]");
     expect(optionsHtml).toContain("[yyyy] [yy] [MM] [dd]");
     expect(optionsHtml).toContain("[hh] [mm] [ss] [ms]");
-    expect(optionsHtml).toContain("[tz] [tzSafe]");
+    expect(optionsHtml).not.toContain("[tz] [tzSafe]");
+    expect(optionsHtml).not.toContain("<code>[tz]</code>");
+    expect(optionsHtml).toContain("[tzSafe]");
     expect(optionsHtml).toContain("[Video Start Time]");
     expect(optionsHtml).toContain("[Video End Time]");
     expect(optionsHtml).toContain("[Video Frame Time]");
@@ -159,6 +161,9 @@ describe("popup markup", () => {
     expect(optionsHtml).toContain("tokens that contain a video timestamp");
     expect(optionsHtml).toContain("Example");
     expect(optionsHtml).toContain("Becomes");
+    expect(optionsHtml).toContain('<h2 class="token-examples-heading">Examples</h2>');
+    expect(optionsHtml).not.toContain("<code>Examples</code>");
+    expect(optionsHtml).toContain("filename-safe punctuation");
     expect(optionsHtml.indexOf("<h2>Integrated download buttons</h2>")).toBeLessThan(
       optionsHtml.indexOf("<h2>Datetime token format</h2>"),
     );

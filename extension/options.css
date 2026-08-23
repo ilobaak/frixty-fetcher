@@ -211,13 +211,17 @@ button:disabled {
   white-space: nowrap;
 }
 .token-list .examples-row {
-  display: grid;
+  display: block;
   grid-column: 1 / -1;
-  grid-template-columns: minmax(170px, max-content) minmax(0, 1fr);
-  gap: 8px 12px;
+  margin-top: 12px;
+}
+.token-examples-heading {
+  margin-top: 10px;
+  margin-bottom: 8px;
 }
 .token-examples {
   display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 .token-examples div {
@@ -244,7 +248,7 @@ button:disabled {
 }
 @media (max-width: 620px) {
   .token-list .examples-row {
-    grid-template-columns: 1fr;
+    display: block;
   }
 }
 .row {

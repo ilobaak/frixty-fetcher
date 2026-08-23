@@ -195,8 +195,9 @@
     <p class="muted" style="margin-top: 4px">
       Custom datetime formats can use <code>[yyyy]</code>, <code>[yy]</code>, <code>[MM]</code>,
       <code>[dd]</code>, <code>[hh]</code>, <code>[mm]</code>, <code>[ss]</code>, <code>[ms]</code>,
-      <code>[tz]</code>, and <code>[tzSafe]</code>. <code>[Datetime]</code> uses your browser's
-      current local date, time, and time zone when the filename is generated. Example:
+      and <code>[tzSafe]</code>. <code>[Datetime]</code> uses your browser's current local date,
+      time, and time zone when the filename is generated. <code>[tzSafe]</code> is the current local
+      UTC offset with filename-safe punctuation, for example <code>"-04.00"</code>. Example:
       <code>"[yyyy]-[MM]-[dd]T[hh].[mm]"</code> becomes <code>"2026-08-18T17.49"</code>.
     </p>
 
@@ -278,10 +279,9 @@
         >
       </div>
       <div>
-        <code>[tz] [tzSafe]</code
+        <code>[tzSafe]</code
         ><span
-          >Current local UTC offset. <code>[tz]</code> is ISO-style, for example
-          <code>"-04:00"</code>. <code>[tzSafe]</code> avoids filename colons, for example
+          >Current local UTC offset using filename-safe punctuation, for example
           <code>"-04.00"</code>.</span
         >
       </div>
@@ -315,7 +315,7 @@
         >
       </div>
       <div class="examples-row">
-        <code>Examples</code>
+        <h2 class="token-examples-heading">Examples</h2>
         <div class="token-examples">
           <div>
             <span>Example</span>

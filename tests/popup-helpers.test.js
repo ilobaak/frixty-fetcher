@@ -126,15 +126,23 @@ describe("timestamp helpers", () => {
         name: "Readable",
         pattern: "[yyyy]-[MM]-[dd] [hh]-[mm]-[ss]-[ms]",
       },
+      {
+        id: "removed-tz",
+        name: "Removed timezone",
+        pattern: "[yyyy]-[MM]-[dd]T[hh].[mm].[ss].[ms][tz]",
+      },
     ];
     expect(DATETIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).toContain(
       "[yyyy][MM][dd]-[hh][mm][ss]",
     );
-    expect(filenameDatetimeToken(date, "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]")).toBe(
-      "2026-08-18T17:49:04.125-04:00",
+    expect(DATETIME_TOKEN_FORMAT_OPTIONS.map((o) => o.value)).not.toContain(
+      "[yyyy]-[MM]-[dd]T[hh]:[mm]:[ss].[ms][tz]",
     );
     expect(filenameDatetimeToken(date, "[yyyy]-[MM]-[dd]-[hh].[mm].[ss]")).toBe(
       "2026-08-18-17.49.04",
+    );
+    expect(filenameDatetimeToken(date, "custom:removed-tz", custom)).toBe(
+      "2026-08-18T17.49.04.125",
     );
     expect(filenameDatetimeToken(date, "[yyyy][MM][dd]-[hh][mm][ss]")).toBe("20260818-174904");
     expect(filenameDatetimeToken(date, "custom:readable", custom)).toBe("2026-08-18 17-49-04-125");

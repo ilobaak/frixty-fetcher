@@ -9,15 +9,21 @@ vars: {
 legend: {
   shape: rectangle
   label: "Legend\nSolid arrows are current code paths.\nTODO nodes are intentional follow-up work, not implemented behavior."
+  style.fill: "#f8fafc"
+  style.stroke: "#64748b"
 }
 
 user: {
   label: "User"
   shape: person
+  style.fill: "#f8fafc"
+  style.stroke: "#475569"
 }
 
 browser: {
   label: "Brave / Chromium Browser"
+  style.fill: "#eff6ff"
+  style.stroke: "#2563eb"
   tabs: "Active source tab"
   popup: "Extension popup"
   options: "Options page"
@@ -31,6 +37,8 @@ browser: {
 
 settings: {
   label: "Download Settings"
+  style.fill: "#ecfdf5"
+  style.stroke: "#059669"
   filename: {
     label: "Filename Schemes"
     single: "single: [Title] -- [@Poster] -- [Source]"
@@ -68,6 +76,8 @@ settings: {
 
 sw: {
   label: "Background Service Worker"
+  style.fill: "#fff7ed"
+  style.stroke: "#ea580c"
   integratedCategory: "integratedCategoryForUrl"
   integratedSettings: "readIntegratedSetting"
   integratedTarget: "buildIntegratedDownloadTarget"
@@ -87,6 +97,8 @@ sw: {
 
 host: {
   label: "Native Host: frixtyhost"
+  style.fill: "#fef2f2"
+  style.stroke: "#dc2626"
   dispatch: "request dispatch"
   listFormats: "listFormats -> yt-dlp -J"
   download: "download -> yt-dlp"
@@ -98,6 +110,8 @@ host: {
 
 external: {
   label: "External Tools / Networks"
+  style.fill: "#f8fafc"
+  style.stroke: "#64748b"
   ytDlp: "yt-dlp"
   ffmpeg: "ffmpeg"
   siteMedia: "site pages, APIs, CDN media"
@@ -105,6 +119,8 @@ external: {
 
 common: {
   label: "Shared Download Primitives"
+  style.fill: "#ecfeff"
+  style.stroke: "#0891b2"
   filenameTokens: {
     label: "applyFilenameTemplate"
     title: "[Title]"
@@ -121,6 +137,8 @@ common: {
 
 integrated: {
   label: "Integrated Page Buttons"
+  style.fill: "#faf5ff"
+  style.stroke: "#9333ea"
   youtube: {
     label: "YouTube"
     script: "youtube-post-grab.js"
@@ -164,6 +182,8 @@ integrated: {
 
 popupFlow: {
   label: "Popup Fetch Button"
+  style.fill: "#eef2ff"
+  style.stroke: "#4f46e5"
   open: "Popup opens"
   restore: "snapshot restores cached fetch/job state"
   route: "runFetchFlow routes active URL"
@@ -185,6 +205,8 @@ popupFlow: {
 
 popupButtons: {
   label: "Popup Download Buttons"
+  style.fill: "#f0fdfa"
+  style.stroke: "#0d9488"
   video: "startDownload"
   image: "startImageDownload"
   galleryAll: "startGalleryDownload"
@@ -197,6 +219,8 @@ popupButtons: {
 
 todo: {
   label: "TODO"
+  style.fill: "#fffbeb"
+  style.stroke: "#d97706"
   smoke: "Manual Brave smoke test integrated buttons after extension reload"
   splitViews: "Optional: split into focused subgraphs if the single graph gets too dense"
 }

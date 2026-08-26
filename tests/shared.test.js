@@ -512,6 +512,18 @@ describe("migrateFilenameSettings", () => {
     });
   });
 
+  it("migrates the previous saved single-download default to title-first", () => {
+    expect(
+      migrateFilenameSettings({
+        filenameMode: "uploader-title-source",
+        filenameDefaultsVersion: 2,
+      }),
+    ).toEqual({
+      filenameMode: DEFAULT_FILENAME_SCHEME,
+      filenameDefaultsVersion: FILENAME_DEFAULTS_VERSION,
+    });
+  });
+
   it("preserves explicit poster-first choices after default migration", () => {
     expect(
       migrateFilenameSettings({

@@ -158,7 +158,7 @@ export const DEFAULT_MULTIPLE_FILENAME_SCHEME = "title-uploader-source-index";
 export const DEFAULT_RANGE_FILENAME_SCHEME = "title-uploader-range-source";
 export const DEFAULT_THUMBNAIL_FILENAME_SCHEME = "title-uploader-source-thumbnail";
 export const DEFAULT_FRAME_FILENAME_SCHEME = "title-uploader-frame-source";
-export const FILENAME_DEFAULTS_VERSION = 2;
+export const FILENAME_DEFAULTS_VERSION = 3;
 export const DEFAULT_BEST_AVAILABLE_MAX_HEIGHT = 0;
 export const BEST_AVAILABLE_MAX_HEIGHT_OPTIONS = [
   { value: 0, label: "No cap" },

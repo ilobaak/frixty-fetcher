@@ -81,9 +81,10 @@ const customSchemeErrorEl = el("custom-scheme-error");
 const resetOptionsBtn = el("reset-options");
 
 const INTEGRATED_CATEGORIES = [
-  ["reddit", "Reddit", true],
   ["facebook", "Facebook", true],
-  ["twitter", "Twitter / X", true],
+  ["reddit", "Reddit", true],
+  ["instagram", "Instagram", true],
+  ["twitter", "X / Twitter", true],
   ["youtube", "YouTube", true],
   ["other", "Other sites", false],
 ];
@@ -786,7 +787,7 @@ function renderIntegratedCategories() {
     const schemeLabel = document.createElement("label");
     schemeLabel.className = "card-control integrated-control";
     schemeLabel.append(document.createElement("span"), scheme);
-    schemeLabel.firstElementChild.textContent = "Filename";
+    schemeLabel.firstElementChild.textContent = "Filename Scheme";
 
     box.append(behaviorLabel, schemeLabel);
     integratedCategoriesEl.append(box);

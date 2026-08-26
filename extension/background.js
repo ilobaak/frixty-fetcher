@@ -288,6 +288,7 @@ function integratedCategoryForUrl(url) {
     const host = new URL(url).hostname.toLowerCase();
     if (/(^|\.)reddit\.com$|(^|\.)redd\.it$/.test(host)) return "reddit";
     if (/(^|\.)facebook\.com$|(^|\.)fb\.watch$/.test(host)) return "facebook";
+    if (/(^|\.)instagram\.com$/.test(host)) return "instagram";
     if (/(^|\.)twitter\.com$|(^|\.)x\.com$/.test(host)) return "twitter";
     if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(host)) return "youtube";
     return "other";
@@ -298,8 +299,9 @@ function integratedCategoryForUrl(url) {
 
 function defaultIntegratedSettings() {
   return {
-    reddit: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
     facebook: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+    reddit: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
+    instagram: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
     twitter: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
     youtube: { behavior: "download", filenameMode: DEFAULT_FILENAME_SCHEME },
     other: { behavior: "fetch", filenameMode: DEFAULT_FILENAME_SCHEME },
@@ -390,7 +392,13 @@ function concreteFilenameBase({
 async function startIntegratedPayloadDownload(tabId, payload) {
   const url = typeof payload?.url === "string" ? payload.url : "";
   if (!url) return false;
-  const setting = await readIntegratedSetting(url);
+  const settingsUrl =
+    typeof payload.sourceUrl === "string" && payload.sourceUrl
+      ? payload.sourceUrl
+      : typeof payload.sourceTweetUrl === "string" && payload.sourceTweetUrl
+        ? payload.sourceTweetUrl
+        : url;
+  const setting = await readIntegratedSetting(settingsUrl);
   if (setting.behavior !== "download") return false;
   const jobId = crypto.randomUUID();
   const title = payload.title || payload.capturedTitle || payload.basename || "";
@@ -404,7 +412,7 @@ async function startIntegratedPayloadDownload(tabId, payload) {
     customDatetimeTokenFormats: setting.customDatetimeTokenFormats,
     title,
     poster,
-    url,
+    url: settingsUrl,
   });
   const urlBase = basenameFromUrl(url).replace(/\.[^.]+$/, "");
   const defaultFileName = buildSafeFilename(
@@ -412,8 +420,12 @@ async function startIntegratedPayloadDownload(tabId, payload) {
     ext === "jpeg" ? "jpg" : ext,
   );
   const defaultBase = hasMetadata ? defaultFileName.replace(/\.[^.]+$/, "") : "";
+  const mime = String(payload.mime || "").toLowerCase();
   const direct =
-    /^https?:\/\//.test(url) && /\.(jpe?g|png|gif|webp|mp4|webm|mov)$/i.test(url.split("?")[0]);
+    /^https?:\/\//.test(url) &&
+    (/\.(jpe?g|png|gif|webp|mp4|webm|mov)$/i.test(url.split("?")[0]) ||
+      mime.startsWith("image/") ||
+      mime.startsWith("video/"));
   jobs.set(jobId, {
     url,
     kind: "integrated",
@@ -435,7 +447,7 @@ async function startIntegratedPayloadDownload(tabId, payload) {
       kind: "combined",
     });
   } else {
-    const cookiesText = await readSiteCookiesText(url);
+    const cookiesText = await readSiteCookiesText(settingsUrl);
     ensureHostPort().postMessage({
       action: "download",
       jobId,
@@ -455,6 +467,51 @@ async function startIntegratedPayloadDownload(tabId, payload) {
     chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });
   } catch {}
   return true;
+}
+
+function captureBatchItemPayload(entry) {
+  const item = entry?.item && typeof entry.item === "object" ? entry.item : {};
+  return {
+    ...entry,
+    ...item,
+    url: item.url || entry?.url || "",
+    sourceUrl:
+      item.sourceUrl || entry?.sourceUrl || item.sourceTweetUrl || entry?.sourceTweetUrl || "",
+    sourceTweetUrl:
+      item.sourceTweetUrl || entry?.sourceTweetUrl || item.sourceUrl || entry?.sourceUrl || "",
+    title: item.title || entry?.title || item.capturedTitle || entry?.capturedTitle || "",
+    capturedTitle: item.capturedTitle || entry?.capturedTitle || entry?.title || item.title || "",
+    author: item.author || entry?.author || item.handle || entry?.handle || "",
+    handle: item.handle || entry?.handle || item.author || entry?.author || "",
+    basename: item.basename || entry?.basename || "",
+    ext: item.ext || entry?.ext || "",
+    mime: item.mime || entry?.mime || "",
+    thumbUrl: item.thumbUrl || entry?.thumbUrl || "",
+    viaYtDlp: Boolean(item.viaYtDlp || entry?.viaYtDlp),
+  };
+}
+
+function captureBatchItemIsTextOnly(entry) {
+  const item = entry?.item && typeof entry.item === "object" ? entry.item : {};
+  return Boolean(entry?.textOnly || item.textOnly);
+}
+
+async function startIntegratedBatchDownloads(tabId, entries) {
+  const leftovers = [];
+  let downloaded = 0;
+  for (const entry of entries) {
+    if (captureBatchItemIsTextOnly(entry)) {
+      leftovers.push(entry);
+      continue;
+    }
+    const handled = await startIntegratedPayloadDownload(tabId, captureBatchItemPayload(entry));
+    if (handled) {
+      downloaded += 1;
+    } else {
+      leftovers.push(entry);
+    }
+  }
+  return { downloaded, leftovers };
 }
 
 // relayTtJobMessage forwards a host-originated job event to the
@@ -1010,12 +1067,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
     }
     (async () => {
+      const validItems = msg.items.filter((it) => it?.url);
+      const integrated = await startIntegratedBatchDownloads(tabId, validItems);
+      if (integrated.downloaded > 0 && integrated.leftovers.length === 0) {
+        dlog("capture:add-batch integrated downloads", {
+          tabId,
+          downloaded: integrated.downloaded,
+        });
+        sendResponse({ ok: true, added: 0, count: 0, downloaded: integrated.downloaded });
+        return;
+      }
       const key = captureKey(tabId);
       const { [key]: existing = [] } = await chrome.storage.session.get(key);
       const existingUrls = new Set(existing.map((e) => e.url));
-      const toAdd = msg.items.filter((it) => it?.url && !existingUrls.has(it.url));
+      const toAdd = integrated.leftovers.filter((it) => it?.url && !existingUrls.has(it.url));
       if (toAdd.length === 0) {
-        sendResponse({ ok: true, added: 0, count: existing.length });
+        sendResponse({
+          ok: true,
+          added: 0,
+          count: existing.length,
+          downloaded: integrated.downloaded,
+        });
         return;
       }
       const next = [...existing, ...toAdd];
@@ -1024,8 +1096,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         chrome.action.setBadgeText({ text: String(next.length), tabId });
         chrome.action.setBadgeBackgroundColor({ color: "#1e90ff", tabId });
       } catch {}
-      dlog("capture:add-batch", { tabId, added: toAdd.length, count: next.length });
-      sendResponse({ ok: true, added: toAdd.length, count: next.length });
+      dlog("capture:add-batch", {
+        tabId,
+        added: toAdd.length,
+        count: next.length,
+        downloaded: integrated.downloaded,
+      });
+      sendResponse({
+        ok: true,
+        added: toAdd.length,
+        count: next.length,
+        downloaded: integrated.downloaded,
+      });
     })();
     return true;
   }

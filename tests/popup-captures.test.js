@@ -178,10 +178,39 @@ describe("options filename controls", () => {
     expect(optionsSource).toContain('new Option("Downloads media", "download")');
     expect(optionsSource).toContain('new Option("Fetches to extension", "fetch")');
     expect(optionsSource).toContain("integrated-button-image");
+    expect(optionsSource).toContain(
+      'schemeLabel.firstElementChild.textContent = "Filename Scheme"',
+    );
     expect(optionsSource).toContain("function resetOptionsToDefaults()");
     expect(optionsSource).toContain("confirm(");
     expect(optionsSource).toContain("This cannot be undone.");
     expect(optionsSource).toContain("filenameSchemeNameTaken");
     expect(optionsSource).toContain('remove.className = "danger"');
+  });
+
+  it("lists integrated button sources in the requested order", () => {
+    const order = [
+      '["facebook", "Facebook", true]',
+      '["reddit", "Reddit", true]',
+      '["instagram", "Instagram", true]',
+      '["twitter", "X / Twitter", true]',
+      '["youtube", "YouTube", true]',
+      '["other", "Other sites", false]',
+    ];
+    for (let i = 0; i < order.length - 1; i += 1) {
+      expect(optionsSource.indexOf(order[i])).toBeGreaterThanOrEqual(0);
+      expect(optionsSource.indexOf(order[i])).toBeLessThan(optionsSource.indexOf(order[i + 1]));
+    }
+  });
+
+  it("routes batch integrated captures through the integrated button settings", () => {
+    expect(backgroundSource).toContain('return "instagram"');
+    expect(backgroundSource).toContain('instagram: { behavior: "download"');
+    expect(backgroundSource).toContain("function startIntegratedBatchDownloads");
+    expect(backgroundSource).toContain("const integrated = await startIntegratedBatchDownloads");
+    expect(backgroundSource).toContain("captureBatchItemPayload");
+    expect(backgroundSource).toContain("captureBatchItemIsTextOnly");
+    expect(backgroundSource).toContain("const settingsUrl =");
+    expect(backgroundSource).toContain("sourceTweetUrl");
   });
 });

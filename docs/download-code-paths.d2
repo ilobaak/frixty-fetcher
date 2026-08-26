@@ -1,0 +1,374 @@
+title: "Frixty Fetcher Download Code Paths"
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
+legend: {
+  shape: rectangle
+  label: "Legend\nSolid arrows are current code paths.\nTODO nodes are intentional follow-up work, not implemented behavior."
+}
+
+user: {
+  label: "User"
+  shape: person
+}
+
+browser: {
+  label: "Brave / Chromium Browser"
+  tabs: "Active source tab"
+  popup: "Extension popup"
+  options: "Options page"
+  content: "Injected content scripts"
+  storage: {
+    label: "chrome.storage"
+    local: "local settings"
+    session: "session cache and capture lists"
+  }
+}
+
+settings: {
+  label: "Download Settings"
+  filename: {
+    label: "Filename Schemes"
+    single: "single: [Title] -- [@Poster] -- [Source]"
+    multi: "multiple: [Title] -- [@Poster] -- [Source] - [Index]"
+    range: "range: [Title] -- [@Poster] -- S([Video Start Time]) -- E([Video End Time]) -- [Source]"
+    thumbnail: "thumbnail: [Title] -- [@Poster] -- [Source] -- thumbnail"
+    frame: "frame: [Title] -- [@Poster] -- FRAME([Video Frame Time]) -- [Source]"
+    custom: "custom schemes"
+  }
+  integrated: {
+    label: "Integrated Button Settings"
+    facebook: "Facebook"
+    reddit: "Reddit"
+    instagram: "Instagram"
+    twitter: "X / Twitter"
+    youtube: "YouTube"
+    other: "Other sites"
+  }
+  saveTarget: {
+    label: "Save Target"
+    ask: "Save As dialog"
+    automatic: "Direct save to selected/default directory"
+    last: "Last used directory fallback"
+  }
+  cookies: {
+    label: "Per-site Cookie Modes"
+    youtube: "YouTube cookies"
+    twitter: "X / Twitter cookies"
+    instagram: "Instagram cookies"
+    facebook: "Facebook cookies"
+    tiktok: "TikTok cookies"
+  }
+  quality: "Best available quality cap"
+}
+
+sw: {
+  label: "Background Service Worker"
+  integratedCategory: "integratedCategoryForUrl"
+  integratedSettings: "readIntegratedSetting"
+  integratedTarget: "buildIntegratedDownloadTarget"
+  filenameBase: "concreteFilenameBase"
+  persistentFetch: "startPersistentListFormats"
+  integratedMetadata: "requestIntegratedListFormats"
+  integratedDownload: "startIntegratedPayloadDownload"
+  integratedBatch: "startIntegratedBatchDownloads"
+  captureAdd: "capture:add"
+  captureBatch: "capture:add-batch"
+  popupPort: "handlePopupMessage"
+  hostRelay: "onHostMessage"
+  cookies: "readSiteCookiesText"
+  jobState: "jobs map"
+  fetchState: "persistentFetches map"
+}
+
+host: {
+  label: "Native Host: frixtyhost"
+  dispatch: "request dispatch"
+  listFormats: "listFormats -> yt-dlp -J"
+  download: "download -> yt-dlp"
+  downloadUrl: "downloadUrl -> direct HTTP GET, optional conversion"
+  downloadGallery: "downloadGallery -> direct or yt-dlp per item"
+  extractFrame: "extractFrame -> ffmpeg frame extraction"
+  dialogs: "OS Save As and folder dialogs"
+}
+
+external: {
+  label: "External Tools / Networks"
+  ytDlp: "yt-dlp"
+  ffmpeg: "ffmpeg"
+  siteMedia: "site pages, APIs, CDN media"
+}
+
+common: {
+  label: "Shared Download Primitives"
+  filenameTokens: {
+    label: "applyFilenameTemplate"
+    title: "[Title]"
+    poster: "[@Poster]"
+    source: "[Source]"
+    index: "[Index]"
+    datetime: "[Datetime]"
+    time: "video time tokens"
+  }
+  sourceToken: "sourceTokenFromUrl"
+  safeName: "buildSafeFilename"
+  directDetect: "direct-media detection"
+}
+
+integrated: {
+  label: "Integrated Page Buttons"
+  youtube: {
+    label: "YouTube"
+    script: "youtube-post-grab.js"
+    message: "yt:trigger-fetch"
+    note: "download mode probes metadata first"
+  }
+  facebook: {
+    label: "Facebook"
+    script: "facebook-post-grab.js"
+    message: "capture:add"
+  }
+  reddit: {
+    label: "Reddit"
+    script: "reddit-post-grab.js"
+    message: "capture:add"
+  }
+  twitter: {
+    label: "X / Twitter"
+    script: "twitter-post-grab.js"
+    message: "capture:add-batch"
+  }
+  instagram: {
+    label: "Instagram"
+    script: "instagram-post-grab.js"
+    message: "capture:add-batch"
+  }
+  tiktokVideo: {
+    label: "TikTok video"
+    script: "tiktok-post-grab.js"
+    message: "capture:add or tiktok:fetch-and-download"
+  }
+  tiktokPhoto: {
+    label: "TikTok photo fallback"
+    message: "yt:trigger-fetch"
+  }
+  other: {
+    label: "Other sites"
+    note: "No universal injected button; popup fetch can try yt-dlp"
+  }
+}
+
+popupFlow: {
+  label: "Popup Fetch Button"
+  open: "Popup opens"
+  restore: "snapshot restores cached fetch/job state"
+  route: "runFetchFlow routes active URL"
+  known: {
+    label: "Known-site detectors"
+    reddit: "detectReddit"
+    facebook: "detectFacebook"
+    twitter: "detectTwitter"
+    instagram: "detectInstagram"
+    tiktok: "detectTikTok"
+  }
+  ytdlp: "requestListFormats"
+  formats: "handleFormats"
+  imagePicker: "single image picker"
+  videoPicker: "single video picker"
+  galleryPicker: "gallery / capture picker"
+  unknownPrompt: "Try-anyway prompt"
+}
+
+popupButtons: {
+  label: "Popup Download Buttons"
+  video: "startDownload"
+  image: "startImageDownload"
+  galleryAll: "startGalleryDownload"
+  galleryOne: "startGallerySingleItem"
+  range: "startRangeDownload"
+  thumbnail: "startThumbnailDownload"
+  frame: "startCurrentFrameDownload / startFrameDownload"
+  text: "downloadTextCapture"
+}
+
+todo: {
+  label: "TODO"
+  smoke: "Manual Brave smoke test integrated buttons after extension reload"
+  renderedAsset: "Optional: commit rendered SVG if a visual artifact is desired"
+}
+
+user -> browser.tabs: "navigate to source page"
+user -> browser.options: "choose filename, integrated behavior, save target, cookies, quality cap"
+browser.options -> browser.storage.local: "persist settings"
+browser.storage.local -> settings: "read current options"
+
+user -> integrated.youtube: "click integrated button"
+integrated.youtube -> sw: "yt:trigger-fetch(url,currentTime)"
+sw -> browser.storage.session: "record auto-fetch marker"
+sw -> sw.integratedSettings: "read YouTube behavior and target"
+sw.integratedSettings -> settings.integrated.youtube
+sw.integratedSettings -> settings.saveTarget
+sw.integratedSettings -> settings.filename
+sw.integratedSettings -> settings.quality
+sw.integratedSettings -> settings.cookies.youtube
+sw.integratedSettings -> browser.popup: "if behavior = fetch, open popup when possible"
+sw -> sw.persistentFetch: "if behavior = fetch, prefetch formats"
+sw.persistentFetch -> host.listFormats: "listFormats"
+browser.popup -> sw.fetchState: "restore prefetch result"
+sw -> sw.integratedMetadata: "if behavior = download"
+sw.integratedMetadata -> host.listFormats: "listFormats with YouTube cookie policy"
+host.listFormats -> external.ytDlp: "yt-dlp -J"
+external.ytDlp -> host.listFormats: "title, uploader, thumbnail, duration, formats"
+host.listFormats -> sw.hostRelay: "formats response"
+sw.hostRelay -> sw.fetchState: "cache persistent formats"
+sw.integratedMetadata -> sw.integratedDownload: "title + uploader metadata"
+sw.integratedDownload -> common.filenameTokens: "build default filename"
+sw.integratedDownload -> host.download: "page URL via yt-dlp"
+host.download -> host.dialogs: "Save As if askPath"
+host.download -> external.ytDlp: "download best/capped combined media"
+external.ytDlp -> host.download: "progress and done"
+host.download -> sw.hostRelay: "job progress/done/error"
+sw.hostRelay -> browser.popup: "broadcast progress when popup is open"
+
+user -> integrated.facebook: "click integrated button"
+integrated.facebook -> browser.content: "scrape post/story/page metadata"
+browser.content -> sw.captureAdd: "capture:add(payload)"
+sw.captureAdd -> sw.integratedDownload: "if Facebook behavior = download"
+sw.captureAdd -> browser.storage.session: "if behavior = fetch or not handled"
+sw.integratedDownload -> common.filenameTokens
+sw.integratedDownload -> host.downloadUrl: "direct image/video URL"
+sw.integratedDownload -> host.download: "page/permalink via yt-dlp when needed"
+
+user -> integrated.reddit: "click integrated button"
+integrated.reddit -> browser.content: "scrape Reddit media/post metadata"
+browser.content -> sw.captureAdd: "capture:add(payload)"
+sw.captureAdd -> sw.integratedDownload: "if Reddit behavior = download"
+sw.captureAdd -> browser.storage.session: "if behavior = fetch or not handled"
+sw.integratedDownload -> host.downloadUrl: "direct media"
+sw.integratedDownload -> host.download: "post URL via yt-dlp when needed"
+
+user -> integrated.twitter: "click integrated button"
+integrated.twitter -> browser.content: "collect tweet media by API or DOM"
+browser.content -> sw.captureBatch: "capture:add-batch(items)"
+sw.captureBatch -> sw.integratedBatch: "if X/Twitter behavior = download"
+sw.integratedBatch -> sw.integratedDownload: "each non-text item"
+sw.integratedBatch -> browser.storage.session: "text-only/fetch leftovers"
+sw.integratedDownload -> common.filenameTokens: "source URL provides x token"
+sw.integratedDownload -> host.downloadUrl: "direct CDN media"
+sw.integratedDownload -> host.download: "tweet URL via yt-dlp when needed"
+
+user -> integrated.instagram: "click integrated button"
+integrated.instagram -> browser.content: "fetch post/story media and build items"
+browser.content -> sw.captureBatch: "capture:add-batch(items)"
+sw.captureBatch -> sw.integratedBatch: "if Instagram behavior = download"
+sw.integratedBatch -> sw.integratedDownload: "each media item"
+sw.integratedBatch -> browser.storage.session: "fetch leftovers"
+sw.integratedDownload -> common.filenameTokens: "source URL provides instagram token"
+sw.integratedDownload -> host.downloadUrl: "direct CDN media"
+
+user -> integrated.tiktokVideo: "click integrated button"
+integrated.tiktokVideo -> browser.content: "resolve visible post or cached intercept metadata"
+browser.content -> sw.captureAdd: "capture:add(payload)"
+browser.content -> sw: "tiktok:fetch-and-download for headless video path"
+sw -> settings.cookies.tiktok: "choose TikTok cookie policy"
+sw -> host.download: "TikTok page URL via yt-dlp"
+host.download -> external.ytDlp
+sw.hostRelay -> browser.content: "relay progress to page button"
+
+user -> integrated.tiktokPhoto: "click photo fallback"
+integrated.tiktokPhoto -> sw: "yt:trigger-fetch"
+sw -> browser.popup: "popup-style fetch path"
+
+user -> browser.popup: "click Fetch"
+browser.popup -> popupFlow.open
+popupFlow.open -> sw.popupPort: "snapshot"
+sw.popupPort -> browser.popup: "jobs and persistent fetches"
+browser.popup -> popupFlow.route
+popupFlow.route -> popupFlow.known: "known source checks"
+popupFlow.known -> popupFlow.imagePicker: "single image"
+popupFlow.known -> popupFlow.galleryPicker: "gallery/captures"
+popupFlow.known -> popupFlow.ytdlp: "known video/fallback"
+popupFlow.route -> popupFlow.unknownPrompt: "unknown host"
+popupFlow.unknownPrompt -> popupFlow.ytdlp: "user tries anyway"
+popupFlow.ytdlp -> sw.popupPort: "listFormats"
+sw.popupPort -> host.listFormats
+host.listFormats -> external.ytDlp
+host.listFormats -> sw.hostRelay
+sw.hostRelay -> popupFlow.formats
+popupFlow.formats -> popupFlow.videoPicker
+
+user -> popupButtons.video: "press video/audio/combined download"
+popupButtons.video -> common.filenameTokens
+popupButtons.video -> settings.saveTarget
+popupButtons.video -> settings.quality
+popupButtons.video -> sw.popupPort: "download"
+sw.popupPort -> sw.cookies: "per-site cookies"
+sw.popupPort -> host.download
+
+user -> popupButtons.image: "press image download"
+popupButtons.image -> common.filenameTokens
+popupButtons.image -> settings.saveTarget
+popupButtons.image -> sw.popupPort: "downloadUrl"
+sw.popupPort -> host.downloadUrl
+
+user -> popupButtons.galleryAll: "press selected gallery/capture download"
+popupButtons.galleryAll -> common.filenameTokens
+popupButtons.galleryAll -> settings.saveTarget
+popupButtons.galleryAll -> sw.popupPort: "downloadGallery or per-item download"
+sw.popupPort -> host.downloadGallery
+
+user -> popupButtons.galleryOne: "press per-card save"
+popupButtons.galleryOne -> common.filenameTokens
+popupButtons.galleryOne -> settings.saveTarget
+popupButtons.galleryOne -> sw.popupPort: "downloadUrl or download"
+sw.popupPort -> host.downloadUrl
+sw.popupPort -> host.download
+
+user -> popupButtons.range: "press range download"
+popupButtons.range -> common.filenameTokens
+popupButtons.range -> settings.saveTarget
+popupButtons.range -> settings.quality
+popupButtons.range -> sw.popupPort: "download with range selection"
+sw.popupPort -> host.download
+host.download -> external.ytDlp: "--download-sections"
+
+user -> popupButtons.thumbnail: "press thumbnail download"
+popupButtons.thumbnail -> common.filenameTokens
+popupButtons.thumbnail -> settings.saveTarget
+popupButtons.thumbnail -> sw.popupPort: "downloadUrl"
+sw.popupPort -> host.downloadUrl
+
+user -> popupButtons.frame: "press frame download"
+popupButtons.frame -> common.filenameTokens
+popupButtons.frame -> settings.saveTarget
+popupButtons.frame -> sw.popupPort: "extractFrame"
+sw.popupPort -> host.extractFrame
+host.extractFrame -> external.ffmpeg
+
+user -> popupButtons.text: "press text-only capture download"
+popupButtons.text -> common.filenameTokens
+popupButtons.text -> settings.saveTarget
+popupButtons.text -> browser: "browser download API / text blob"
+
+host.dialogs -> settings.saveTarget.ask: "dialog path"
+settings.saveTarget.automatic -> host.download: "direct destination path"
+settings.saveTarget.automatic -> host.downloadUrl
+settings.saveTarget.automatic -> host.downloadGallery
+
+host.download -> sw.jobState
+host.downloadUrl -> sw.jobState
+host.downloadGallery -> sw.jobState
+host.extractFrame -> sw.jobState
+sw.jobState -> browser.popup: "progress, done, error"
+sw.fetchState -> browser.storage.session: "recover popup state"
+
+todo.smoke -> integrated.facebook
+todo.smoke -> integrated.reddit
+todo.smoke -> integrated.instagram
+todo.smoke -> integrated.twitter
+todo.smoke -> integrated.youtube
+todo.smoke -> integrated.tiktokVideo

@@ -35,6 +35,7 @@ import {
   buildPersistentFetchSnapshot,
   buildTtRelayMessage,
   buildYoutubeTriggerFetchPlan,
+  buildIntegratedDownloadTarget,
 } from "./background-helpers.js";
 import { logFetcher } from "./fetcher-log.js";
 
@@ -316,6 +317,7 @@ async function readIntegratedSetting(url) {
   const category = integratedCategoryForUrl(url);
   return {
     category,
+    target: buildIntegratedDownloadTarget(s),
     customFilenameSchemes: normalizeCustomFilenameSchemes(s.customFilenameSchemes),
     customDatetimeTokenFormats: normalizeCustomDatetimeTokenFormats(s.customDatetimeTokenFormats),
     datetimeTokenFormat: s.datetimeTokenFormat || DEFAULT_DATETIME_TOKEN_FORMAT,
@@ -394,6 +396,7 @@ async function startIntegratedPayloadDownload(tabId, payload) {
   const title = payload.title || payload.capturedTitle || payload.basename || "";
   const poster = payload.author || payload.handle || "";
   const ext = payload.ext || (payload.mime || "").split("/").pop() || "mp4";
+  const hasMetadata = Boolean(title || poster);
   const base = concreteFilenameBase({
     mode: setting.filenameMode,
     customFilenameSchemes: setting.customFilenameSchemes,
@@ -403,10 +406,12 @@ async function startIntegratedPayloadDownload(tabId, payload) {
     poster,
     url,
   });
+  const urlBase = basenameFromUrl(url).replace(/\.[^.]+$/, "");
   const defaultFileName = buildSafeFilename(
-    base || basenameFromUrl(url).replace(/\.[^.]+$/, ""),
+    (hasMetadata ? base : "") || urlBase || base,
     ext === "jpeg" ? "jpg" : ext,
   );
+  const defaultBase = hasMetadata ? defaultFileName.replace(/\.[^.]+$/, "") : "";
   const direct =
     /^https?:\/\//.test(url) && /\.(jpe?g|png|gif|webp|mp4|webm|mov)$/i.test(url.split("?")[0]);
   jobs.set(jobId, {
@@ -422,22 +427,26 @@ async function startIntegratedPayloadDownload(tabId, payload) {
       action: "downloadUrl",
       jobId,
       url,
-      destDir: "",
-      askPath: false,
+      destDir: setting.target.destDir,
+      askPath: setting.target.askPath,
       defaultFileName,
+      startDir: setting.target.startDir,
+      dialogTitle: setting.target.dialogTitle,
       kind: "combined",
     });
   } else {
     const cookiesText = await readSiteCookiesText(url);
-    const baseNoExt = defaultFileName.replace(/\.[^.]+$/, "");
     ensureHostPort().postMessage({
       action: "download",
       jobId,
       url,
       selection: { kind: "combined", height: setting.bestAvailableMaxHeight || 0 },
-      destDir: "",
-      askPath: false,
-      filenameTemplate: baseNoExt ? `${baseNoExt.replace(/%/g, "%%")}.%(ext)s` : "",
+      destDir: setting.target.destDir,
+      askPath: setting.target.askPath,
+      defaultFileName,
+      startDir: setting.target.startDir,
+      dialogTitle: setting.target.dialogTitle,
+      filenameTemplate: defaultBase ? `${defaultBase.replace(/%/g, "%%")}.%(ext)s` : "",
       cookiesText,
     });
   }

@@ -15,6 +15,7 @@ import {
   buildPersistentFetchSnapshot,
   buildTtRelayMessage,
   buildYoutubeTriggerFetchPlan,
+  buildIntegratedDownloadTarget,
 } from "../extension/background-helpers.js";
 
 describe("captureKey", () => {
@@ -77,10 +78,7 @@ describe("siteCookieDomains", () => {
       "youtube.com",
       "google.com",
     ]);
-    expect(siteCookieDomains("https://youtu.be/x")).toEqual([
-      "youtube.com",
-      "google.com",
-    ]);
+    expect(siteCookieDomains("https://youtu.be/x")).toEqual(["youtube.com", "google.com"]);
   });
 
   it("maps single-domain sites to one entry each", () => {
@@ -283,9 +281,7 @@ describe("buildTtRelayMessage", () => {
       jobId: "j2",
       path: "",
     });
-    expect(
-      buildTtRelayMessage({ type: "done", jobId: "j2", path: "/foo.mp4" }),
-    ).toEqual({
+    expect(buildTtRelayMessage({ type: "done", jobId: "j2", path: "/foo.mp4" })).toEqual({
       type: "tt:dl-done",
       jobId: "j2",
       path: "/foo.mp4",
@@ -327,5 +323,46 @@ describe("buildYoutubeTriggerFetchPlan", () => {
 
   it("respects the never-use-cookies YouTube setting", () => {
     expect(buildYoutubeTriggerFetchPlan({ youtubeCookiesMode: "never" }).useCookies).toBe(false);
+  });
+});
+
+describe("buildIntegratedDownloadTarget", () => {
+  it("opens Save As by default for integrated page-button downloads", () => {
+    expect(buildIntegratedDownloadTarget({})).toEqual({
+      askPath: true,
+      startDir: "",
+      destDir: "",
+      dialogTitle: "Save as...",
+    });
+  });
+
+  it("uses the saved destination only when automatic downloads are enabled", () => {
+    expect(
+      buildIntegratedDownloadTarget({
+        downloadAutomatically: true,
+        destinationDir: "C:\\Downloads",
+      }),
+    ).toEqual({
+      askPath: false,
+      startDir: "",
+      destDir: "C:\\Downloads",
+      dialogTitle: "",
+    });
+  });
+
+  it("starts Save As in the best remembered folder when prompting", () => {
+    expect(
+      buildIntegratedDownloadTarget({
+        downloadAutomatically: false,
+        destinationDir: "C:\\Picked",
+        lastDir: "C:\\Last",
+        specificDestDir: "C:\\Specific",
+      }),
+    ).toEqual({
+      askPath: true,
+      startDir: "C:\\Picked",
+      destDir: "",
+      dialogTitle: "Save as...",
+    });
   });
 });

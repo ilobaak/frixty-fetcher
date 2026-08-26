@@ -173,3 +173,32 @@ export function buildYoutubeTriggerFetchPlan(settings = {}) {
     useCookies: mode === "always",
   };
 }
+
+export function buildIntegratedDownloadTarget(settings = {}) {
+  const automatic =
+    typeof settings.downloadAutomatically === "boolean"
+      ? settings.downloadAutomatically
+      : typeof settings.galleryConfirmEach === "boolean"
+        ? !settings.galleryConfirmEach
+        : false;
+  const startDir =
+    settings.destinationDir ||
+    settings.galleryDestDir ||
+    settings.lastDir ||
+    settings.specificDestDir ||
+    "";
+  if (!automatic) {
+    return {
+      askPath: true,
+      startDir,
+      destDir: "",
+      dialogTitle: "Save as...",
+    };
+  }
+  return {
+    askPath: false,
+    startDir: "",
+    destDir: settings.destinationDir || settings.galleryDestDir || "",
+    dialogTitle: "",
+  };
+}

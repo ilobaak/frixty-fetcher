@@ -213,4 +213,19 @@ describe("options filename controls", () => {
     expect(backgroundSource).toContain("const settingsUrl =");
     expect(backgroundSource).toContain("sourceTweetUrl");
   });
+
+  it("fetches YouTube metadata before integrated page-button downloads", () => {
+    expect(backgroundSource).toContain("async function requestIntegratedListFormats");
+    expect(backgroundSource).toContain("const formats = await requestIntegratedListFormats");
+    expect(backgroundSource).toContain("pickHandleText(formats.uploaderId, formats.uploader)");
+    expect(backgroundSource).toContain(
+      'title: formats?.type === "formats" ? formats.title || "" : ""',
+    );
+  });
+
+  it("does not classify known page URLs as direct downloads just because a mime was provided", () => {
+    expect(backgroundSource).toContain("const urlCategory = integratedCategoryForUrl(url)");
+    expect(backgroundSource).toContain('urlCategory === "other"');
+    expect(backgroundSource).not.toContain('mime: "video/mp4",');
+  });
 });

@@ -13,6 +13,7 @@ import {
   migrateFilenameSettings,
   normalizeCustomFilenameSchemes,
   normalizeHandle,
+  pickHandleText,
   sourceTokenFromUrl,
   buildSafeFilename,
   basenameFromUrl,
@@ -77,24 +78,21 @@ function ensureHostPort() {
       }
     }
     for (const [reqId, entry] of pendingRequests) {
+      const errorMsg = {
+        type: "error",
+        reqId,
+        code: "host_disconnected",
+        message: err?.message ?? "native host disconnected",
+      };
       const fetchState = persistentFetches.get(reqId);
       if (fetchState?.status === "running") {
         fetchState.status = "error";
         fetchState.completedAt = Date.now();
-        fetchState.error = {
-          type: "error",
-          reqId,
-          code: "host_disconnected",
-          message: err?.message ?? "native host disconnected",
-        };
+        fetchState.error = errorMsg;
       }
+      entry.resolve?.(errorMsg);
       try {
-        entry.port.postMessage({
-          type: "error",
-          reqId,
-          code: "host_disconnected",
-          message: err?.message ?? "native host disconnected",
-        });
+        entry.port?.postMessage(errorMsg);
       } catch {}
     }
     pendingRequests.clear();
@@ -203,6 +201,7 @@ async function onHostMessage(msg) {
     try {
       entry.port?.postMessage(stamped);
     } catch {}
+    entry.resolve?.(stamped);
     if (fetchState) broadcast({ type: "fetchState", fetch: { id: msg.reqId, ...fetchState } });
     return;
   }
@@ -281,6 +280,59 @@ async function startPersistentListFormats({ port = null, tabId = 0, url, useCook
     cookiesText,
   });
   return reqId;
+}
+
+async function requestIntegratedListFormats({ tabId = 0, url, useCookies = false }) {
+  const cacheKey = `formats:${useCookies ? "c" : "n"}:${url}`;
+  const cached = await cacheGet(cacheKey);
+  if (cached) return cached;
+  const reqId = crypto.randomUUID();
+  const fetchState = {
+    tabId,
+    url,
+    status: "running",
+    useCookies: !!useCookies,
+    startedAt: Date.now(),
+    response: null,
+    error: null,
+  };
+  persistentFetches.set(reqId, fetchState);
+  broadcast({ type: "fetchState", fetch: { id: reqId, ...fetchState } });
+  return new Promise((resolve) => {
+    pendingRequests.set(reqId, {
+      port: null,
+      cacheKey,
+      useCookies: !!useCookies,
+      persistent: true,
+      resolve,
+    });
+    (useCookies ? readSiteCookiesText(url) : Promise.resolve(""))
+      .then((cookiesText) => {
+        logFetcher("sw", "host:listFormats", { url, useCookies: !!useCookies });
+        ensureHostPort().postMessage({
+          action: "listFormats",
+          reqId,
+          url,
+          cookiesText: useCookies ? cookiesText : "",
+        });
+      })
+      .catch((err) => {
+        pendingRequests.delete(reqId);
+        const errorMsg = {
+          type: "error",
+          reqId,
+          code: "cookies_failed",
+          message: err?.message || String(err),
+        };
+        const state = persistentFetches.get(reqId);
+        if (state) {
+          state.status = "error";
+          state.completedAt = Date.now();
+          state.error = errorMsg;
+        }
+        resolve(errorMsg);
+      });
+  });
 }
 
 function integratedCategoryForUrl(url) {
@@ -421,11 +473,11 @@ async function startIntegratedPayloadDownload(tabId, payload) {
   );
   const defaultBase = hasMetadata ? defaultFileName.replace(/\.[^.]+$/, "") : "";
   const mime = String(payload.mime || "").toLowerCase();
+  const urlCategory = integratedCategoryForUrl(url);
   const direct =
     /^https?:\/\//.test(url) &&
     (/\.(jpe?g|png|gif|webp|mp4|webm|mov)$/i.test(url.split("?")[0]) ||
-      mime.startsWith("image/") ||
-      mime.startsWith("video/"));
+      (urlCategory === "other" && (mime.startsWith("image/") || mime.startsWith("video/"))));
   jobs.set(jobId, {
     url,
     kind: "integrated",
@@ -838,12 +890,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .then(async () => {
         const setting = await readIntegratedSetting(url);
         if (setting.behavior === "download") {
+          const { settings = {} } = await chrome.storage.local.get("settings");
+          const plan = buildYoutubeTriggerFetchPlan(settings);
+          const formats = await requestIntegratedListFormats({
+            tabId,
+            url,
+            useCookies: plan.useCookies,
+          });
           await startIntegratedPayloadDownload(tabId, {
             url,
-            title: "",
-            author: "",
+            title: formats?.type === "formats" ? formats.title || "" : "",
+            author:
+              formats?.type === "formats"
+                ? pickHandleText(formats.uploaderId, formats.uploader)
+                : "",
             ext: "mp4",
-            mime: "video/mp4",
           });
           sendResponse({ ok: true, downloaded: true });
           return;
